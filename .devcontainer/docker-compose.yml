@@ -1,0 +1,49 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: mailsandbox
+      MYSQL_USER: mailsandboxer
+      MYSQL_PASSWORD: mailpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8081:80"
+    depends_on:
+      mysql:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    volumes:
+      - ..:/var/www/app:cached
+    environment:
+      APACHE_DOCUMENT_ROOT: /var/www/app/public
+      DB_HOST: mysql
+      DB_USER: mailsandboxer
+      DB_PASS: mailpass
+      DB_NAME: mailsandbox
+    depends_on:
+      mysql:
+        condition: service_started
+
+volumes:
+  mysql_data:
