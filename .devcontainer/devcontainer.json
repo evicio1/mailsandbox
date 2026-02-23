@@ -1,5 +1,5 @@
 {
-	"name": "Mail Sandbox",
+	"name": "MailEyez",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "web",
 	"workspaceFolder": "/var/www/app",
@@ -34,5 +34,5 @@
 			"onAutoForward": "silent"
 		}
 	},
-	"postCreateCommand": "mkdir -p storage/attachments && chmod -R 777 storage"
+	"postCreateCommand": "mkdir -p storage/logs storage/attachments storage/framework/{sessions,views,cache} bootstrap/cache && chmod -R 777 storage bootstrap/cache"
 }

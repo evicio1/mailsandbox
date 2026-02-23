@@ -25,7 +25,7 @@ services:
       - "8081:80"
     depends_on:
       mysql:
-        condition: service_started
+        condition: service_healthy   # wait until MySQL is truly ready
 
   web:
     build:
@@ -37,13 +37,15 @@ services:
       - ..:/var/www/app:cached
     environment:
       APACHE_DOCUMENT_ROOT: /var/www/app/public
+      # These match Laravel's default .env key names so the app reads them correctly
       DB_HOST: mysql
-      DB_USER: mailsandboxer
-      DB_PASS: FMR7zrq5ucr!jau-pgb
-      DB_NAME: mailsandbox
+      DB_PORT: "3306"
+      DB_DATABASE: mailsandbox
+      DB_USERNAME: mailsandboxer
+      DB_PASSWORD: "FMR7zrq5ucr!jau-pgb"
     depends_on:
       mysql:
-        condition: service_started
+        condition: service_healthy   # wait until MySQL is truly ready
 
 volumes:
   mysql_data:
