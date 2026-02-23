@@ -19,6 +19,7 @@ class MailParser {
     // Arrays for CC and To
     public $toRaw = [];
     public $ccRaw = [];
+    public $extendedHeaders = [];
     
     public $attachments = []; // {filename, content, type, encoding}
 
@@ -74,9 +75,13 @@ class MailParser {
         $headersLines = explode("\n", $this->headersRaw);
         foreach ($headersLines as $line) {
             if (preg_match('/^(Delivered-To|X-Original-To|Envelope-To):\s*(.+)$/i', $line, $matches)) {
+                $headerName = strtolower($matches[1]);
                 $email = filter_var(trim($matches[2], " <>"), FILTER_SANITIZE_EMAIL);
-                if ($email && !in_array($email, $this->toRaw)) {
-                    array_unshift($this->toRaw, $email); // Prioritize these
+                if ($email) {
+                    $this->extendedHeaders[$headerName][] = $email;
+                    if (!in_array($email, $this->toRaw)) {
+                        $this->toRaw[] = $email; // Append to keep all
+                    }
                 }
             }
         }
@@ -164,6 +169,18 @@ class MailParser {
     }
 
     public function getTargetMailbox() {
+        $order = ['delivered-to', 'x-original-to', 'envelope-to'];
+        foreach ($order as $hdr) {
+            if (!empty($this->extendedHeaders[$hdr])) {
+                foreach ($this->extendedHeaders[$hdr] as $email) {
+                    $email = strtolower(trim($email, " <>"));
+                    if (str_ends_with($email, '@evicio.site')) {
+                        return $email;
+                    }
+                }
+            }
+        }
+
         foreach ($this->toRaw as $email) {
             $email = strtolower(trim($email, " <>"));
             if (str_ends_with($email, '@evicio.site')) {
