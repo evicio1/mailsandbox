@@ -16,7 +16,9 @@ class MemberController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('auth'),
-            new Middleware('permission:manage-members'),
+            // SuperAdmin gates are enforced via authorizeForTenant();
+            // regular Spatie permission check is skipped here because
+            // SuperAdmins don't hold Spatie roles (they use is_super_admin flag).
         ];
     }
 

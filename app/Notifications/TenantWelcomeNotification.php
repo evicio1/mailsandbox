@@ -9,7 +9,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Password;
 
-class TenantWelcomeNotification extends Notification implements ShouldQueue
+class TenantWelcomeNotification extends Notification
 {
     use Queueable;
 

@@ -8,6 +8,10 @@
             <div class="flex gap-2">
                 <a href="{{ route('admin.tenants.edit', $tenant) }}"
                    class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-sm rounded-md shadow-sm hover:bg-gray-50">Edit</a>
+                <form method="POST" action="{{ route('admin.tenants.resend-invite', $tenant) }}">
+                    @csrf
+                    <button class="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm rounded-md shadow-sm hover:bg-indigo-100">Resend Invite</button>
+                </form>
                 @if($tenant->isActive())
                     <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}">
                         @csrf

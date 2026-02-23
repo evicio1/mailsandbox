@@ -83,9 +83,9 @@ class Tenant extends Model
 
     public function totalStorageBytes(): int
     {
-        return $this->mailboxes()
-            ->withSum('messages', 'raw_size')
+        return (int) ($this->mailboxes()
+            ->withSum('messages', 'size_bytes')
             ->get()
-            ->sum('messages_sum_raw_size') ?? 0;
+            ->sum('messages_sum_size_bytes') ?? 0);
     }
 }

@@ -130,4 +130,17 @@ class TenantController extends Controller implements HasMiddleware
         return redirect()->route('admin.tenants.index')
             ->with('success', 'Tenant deleted.');
     }
+
+    public function resendInvite(Tenant $tenant)
+    {
+        $owner = $tenant->owner;
+
+        if (! $owner) {
+            return back()->withErrors(['error' => 'This tenant has no owner to invite.']);
+        }
+
+        $owner->notify(new TenantWelcomeNotification($tenant));
+
+        return back()->with('success', "Invite email resent to {$owner->email}.");
+    }
 }

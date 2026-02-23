@@ -49,8 +49,9 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     // ── Admin: Tenant Management (SuperAdmin only) ─────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('tenants', TenantController::class);
-        Route::post('tenants/{tenant}/suspend',  [TenantController::class, 'suspend'])->name('tenants.suspend');
-        Route::post('tenants/{tenant}/activate', [TenantController::class, 'activate'])->name('tenants.activate');
+        Route::post('tenants/{tenant}/suspend',       [TenantController::class, 'suspend'])->name('tenants.suspend');
+        Route::post('tenants/{tenant}/activate',      [TenantController::class, 'activate'])->name('tenants.activate');
+        Route::post('tenants/{tenant}/resend-invite', [TenantController::class, 'resendInvite'])->name('tenants.resend-invite');
     });
 
     // ── Admin: Member Management (TenantAdmin or SuperAdmin) ─────────────
