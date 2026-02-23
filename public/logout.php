@@ -2,5 +2,5 @@
 require_once __DIR__ . '/../app/auth.php';
 
 logout();
-header("Location: /public/login.php");
+header("Location: /login.php");
 exit;

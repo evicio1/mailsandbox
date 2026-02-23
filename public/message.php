@@ -45,7 +45,7 @@ $ccRaw = json_decode($msg['cc_raw'] ?? '[]', true);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($msg['subject'] ?: 'Message Details'); ?></title>
-    <link rel="stylesheet" href="/public/assets/style.css">
+    <link rel="stylesheet" href="/assets/style.css">
     <style>
         .msg-header {
             background: var(--surface);
@@ -123,11 +123,11 @@ $ccRaw = json_decode($msg['cc_raw'] ?? '[]', true);
     <div class="container">
         <div class="header" style="margin-bottom: 1rem; border: none; padding: 0;">
             <div class="nav-links" style="margin-left: 0;">
-                <a href="/public/mailbox.php?id=<?php echo $msg['mailbox_id']; ?>" style="margin-left: 0;">&larr; Back to <?php echo htmlspecialchars($msg['mailbox_key']); ?></a>
+                <a href="/mailbox.php?id=<?php echo $msg['mailbox_id']; ?>" style="margin-left: 0;">&larr; Back to <?php echo htmlspecialchars($msg['mailbox_key']); ?></a>
             </div>
             <div class="nav-links">
-                <a href="/public/index.php">Search</a>
-                <a href="/public/logout.php">Logout</a>
+                <a href="/index.php">Search</a>
+                <a href="/logout.php">Logout</a>
             </div>
         </div>
 
@@ -174,7 +174,7 @@ $ccRaw = json_decode($msg['cc_raw'] ?? '[]', true);
                                 (<?php echo formatBytes($att['size_bytes']); ?>)
                             </span>
                         </div>
-                        <a href="/public/attachment.php?id=<?php echo $att['id']; ?>" class="btn btn-sm btn-outline" target="_blank">Download</a>
+                        <a href="/attachment.php?id=<?php echo $att['id']; ?>" class="btn btn-sm btn-outline" target="_blank">Download</a>
                     </div>
                 <?php endforeach; ?>
             </div>

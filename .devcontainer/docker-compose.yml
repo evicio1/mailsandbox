@@ -5,7 +5,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: mailsandbox
       MYSQL_USER: mailsandboxer
-      MYSQL_PASSWORD: mailpass
+      MYSQL_PASSWORD: FMR7zrq5ucr!jau-pgb
     ports:
       - "3306:3306"
     volumes:
@@ -39,7 +39,7 @@ services:
       APACHE_DOCUMENT_ROOT: /var/www/app/public
       DB_HOST: mysql
       DB_USER: mailsandboxer
-      DB_PASS: mailpass
+      DB_PASS: FMR7zrq5ucr!jau-pgb
       DB_NAME: mailsandbox
     depends_on:
       mysql:

@@ -37,7 +37,7 @@ $messages = $stmtMsg->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($mailbox['mailbox_key']); ?> - Test Inbox</title>
-    <link rel="stylesheet" href="/public/assets/style.css">
+    <link rel="stylesheet" href="/assets/style.css">
     <style>
         .msg-list { border-radius: 12px; overflow: hidden; border: 1px solid var(--surface-border); background: var(--surface); }
         .msg-row {
@@ -72,8 +72,8 @@ $messages = $stmtMsg->fetchAll();
                 <div style="font-size: 0.9rem; color: var(--text-muted);">Total Emails: <?php echo $total; ?></div>
             </div>
             <div class="nav-links">
-                <a href="/public/index.php">Back to Search</a>
-                <a href="/public/logout.php">Logout</a>
+                <a href="/index.php">Back to Search</a>
+                <a href="/logout.php">Logout</a>
             </div>
         </div>
 
@@ -82,7 +82,7 @@ $messages = $stmtMsg->fetchAll();
         <?php else: ?>
             <div class="msg-list">
                 <?php foreach ($messages as $msg): ?>
-                    <a href="/public/message.php?id=<?php echo $msg['id']; ?>" class="msg-row <?php echo !$msg['is_read'] ? 'unread' : ''; ?>">
+                    <a href="/message.php?id=<?php echo $msg['id']; ?>" class="msg-row <?php echo !$msg['is_read'] ? 'unread' : ''; ?>">
                         <div class="msg-from">
                             <?php echo htmlspecialchars($msg['from_name'] ?: $msg['from_email']); ?>
                         </div>

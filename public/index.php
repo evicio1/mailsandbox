@@ -21,7 +21,7 @@ $mailboxes = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inbox Search - Evicio Test Inbox</title>
-    <link rel="stylesheet" href="/public/assets/style.css">
+    <link rel="stylesheet" href="/assets/style.css">
     <style>
         .search-wrap { display: flex; gap: 1rem; margin-bottom: 2rem; }
         .mailbox-card {
@@ -50,13 +50,13 @@ $mailboxes = $stmt->fetchAll();
         <div class="header">
             <h2>🏠 Inbox Directory</h2>
             <div class="nav-links">
-                <a href="/public/index.php">Search</a>
-                <a href="/public/logout.php">Logout</a>
+                <a href="/index.php">Search</a>
+                <a href="/logout.php">Logout</a>
             </div>
         </div>
 
         <div class="search-wrap">
-            <form action="/public/index.php" method="GET" style="display:flex; width:100%; gap: 1rem;">
+            <form action="/index.php" method="GET" style="display:flex; width:100%; gap: 1rem;">
                 <input type="text" name="q" value="<?php echo htmlspecialchars($search); ?>" class="form-input" placeholder="Search for mailbox e.g., 'qa+login'...">
                 <button type="submit" class="btn btn-sm" style="width:auto;">Search</button>
             </form>
@@ -67,7 +67,7 @@ $mailboxes = $stmt->fetchAll();
                 <p>No mailboxes found.</p>
             <?php else: ?>
                 <?php foreach ($mailboxes as $mb): ?>
-                    <a href="/public/mailbox.php?id=<?php echo $mb['id']; ?>" class="mailbox-card">
+                    <a href="/mailbox.php?id=<?php echo $mb['id']; ?>" class="mailbox-card">
                         <div class="mb-info">
                             <h3><?php echo htmlspecialchars($mb['mailbox_key']); ?></h3>
                             <div class="mb-meta">Created: <?php echo htmlspecialchars($mb['created_at']); ?></div>

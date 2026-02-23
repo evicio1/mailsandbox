@@ -7,7 +7,7 @@ session_start();
 function requireAuth() {
     if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
         // Redirect to login page
-        header("Location: /public/login.php");
+        header("Location: /login.php");
         exit;
     }
 }

@@ -100,12 +100,12 @@ class MailParser {
             }
 
             $params = [];
-            if ($structure->parameters) {
+            if (isset($structure->parameters) && $structure->parameters) {
                 foreach ($structure->parameters as $p) {
                     $params[strtolower($p->attribute)] = $p->value;
                 }
             }
-            if ($structure->dparameters) {
+            if (isset($structure->dparameters) && $structure->dparameters) {
                 foreach ($structure->dparameters as $p) {
                     $params[strtolower($p->attribute)] = $p->value;
                 }

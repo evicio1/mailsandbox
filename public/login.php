@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../app/auth.php';
 
 if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    header("Location: /public/index.php");
+    header("Location: /index.php");
     exit;
 }
 
@@ -11,7 +11,7 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     if (login($password)) {
-        header("Location: /public/index.php");
+        header("Location: /index.php");
         exit;
     } else {
         $error = 'Invalid password';
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Evicio Test Inbox</title>
-    <link rel="stylesheet" href="/public/assets/style.css">
+    <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
     <div class="auth-container">

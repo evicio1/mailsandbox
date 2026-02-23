@@ -15,7 +15,7 @@ define('DB_PORT', 3306);
 // IMAP Settings (Hostinger or general)
 define('IMAP_HOST', '{imap.hostinger.com:993/imap/ssl}INBOX');
 define('IMAP_USER', 'emailtesting@evicio.site');
-define('IMAP_PASS', 'YOUR_IMAP_PASSWORD_HERE'); // Needs to be configured
+define('IMAP_PASS', 'de:A/tv?0W'); // Needs to be configured
 
 // Paths
 define('BASE_PATH', dirname(__DIR__));
