@@ -1,93 +1,113 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Tenants</h2>
-            <a href="{{ route('admin.tenants.create') }}"
-               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-700">
-                + New Tenant
+        <div class="flex items-center justify-between w-full">
+            <div>
+                <h1 class="page-title">Tenants</h1>
+                <p class="page-subtitle">Manage all tenant organisations</p>
+            </div>
+            <a href="{{ route('admin.tenants.create') }}" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Tenant
             </a>
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="space-y-5 animate-fade-in">
 
-            @if(session('success'))
-                <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded text-sm">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            {{-- Filters --}}
-            <form method="GET" class="mb-4 flex gap-3">
-                <input type="text" name="search" value="{{ request('search') }}"
-                    placeholder="Search by name…"
-                    class="border-gray-300 rounded-md shadow-sm text-sm flex-1 focus:ring-indigo-500 focus:border-indigo-500">
-                <select name="status" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="">All Statuses</option>
-                    <option value="active" @selected(request('status') === 'active')>Active</option>
-                    <option value="suspended" @selected(request('status') === 'suspended')>Suspended</option>
-                </select>
-                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200">Filter</button>
-            </form>
-
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Members</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($tenants as $tenant)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4">
-                                <a href="{{ route('admin.tenants.show', $tenant) }}" class="font-medium text-indigo-600 hover:underline">
-                                    {{ $tenant->name }}
-                                </a>
-                                <div class="text-xs text-gray-400">{{ $tenant->slug }}</div>
-                            </td>
-                            <td class="px-6 py-4 capitalize">{{ $tenant->plan }}</td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                                    {{ $tenant->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                    {{ ucfirst($tenant->status) }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-gray-600">{{ $tenant->owner?->email ?? '—' }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $tenant->users_count }}</td>
-                            <td class="px-6 py-4 flex gap-2">
-                                <a href="{{ route('admin.tenants.edit', $tenant) }}"
-                                   class="text-indigo-600 hover:underline text-xs">Edit</a>
-                                @if($tenant->isActive())
-                                    <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}">
-                                        @csrf
-                                        <button class="text-red-600 hover:underline text-xs">Suspend</button>
-                                    </form>
-                                @else
-                                    <form method="POST" action="{{ route('admin.tenants.activate', $tenant) }}">
-                                        @csrf
-                                        <button class="text-green-600 hover:underline text-xs">Activate</button>
-                                    </form>
-                                @endif
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">No tenants found.</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                <div class="px-6 py-4 border-t border-gray-100">
-                    {{ $tenants->links() }}
-                </div>
-            </div>
+        @if(session('success'))
+        <div class="flex items-center gap-3 p-4 bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 rounded-xl text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            {{ session('success') }}
         </div>
+        @endif
+
+        <!-- Filters -->
+        <form method="GET" class="flex gap-3">
+            <input type="text" name="search" value="{{ request('search') }}"
+                   placeholder="Search by name…"
+                   class="form-input flex-1">
+            <select name="status"
+                    class="form-input w-48">
+                <option value="">All Statuses</option>
+                <option value="active" @selected(request('status') === 'active')>Active</option>
+                <option value="suspended" @selected(request('status') === 'suspended')>Suspended</option>
+            </select>
+            <button type="submit" class="btn-secondary">Filter</button>
+        </form>
+
+        <!-- Table -->
+        <div class="card overflow-hidden">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Plan</th>
+                        <th>Status</th>
+                        <th>Owner</th>
+                        <th>Members</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($tenants as $tenant)
+                    <tr>
+                        <td>
+                            <a href="{{ route('admin.tenants.show', $tenant) }}"
+                               class="font-semibold text-brand-400 hover:text-brand-300 transition">
+                                {{ $tenant->name }}
+                            </a>
+                            <div class="text-xs text-slate-600 mt-0.5">{{ $tenant->slug }}</div>
+                        </td>
+                        <td>
+                            <span class="badge-gray capitalize">{{ $tenant->plan }}</span>
+                        </td>
+                        <td>
+                            @if($tenant->status === 'active')
+                                <span class="badge-green">Active</span>
+                            @else
+                                <span class="badge-red">{{ ucfirst($tenant->status) }}</span>
+                            @endif
+                        </td>
+                        <td class="text-slate-400">{{ $tenant->owner?->email ?? '—' }}</td>
+                        <td class="text-slate-400">{{ $tenant->users_count }}</td>
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <a href="{{ route('admin.tenants.edit', $tenant) }}"
+                                   class="text-xs text-brand-400 hover:text-brand-300 font-medium transition">
+                                    Edit
+                                </a>
+                                @if($tenant->isActive())
+                                <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}">
+                                    @csrf
+                                    <button class="text-xs text-red-400 hover:text-red-300 font-medium transition">Suspend</button>
+                                </form>
+                                @else
+                                <form method="POST" action="{{ route('admin.tenants.activate', $tenant) }}">
+                                    @csrf
+                                    <button class="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition">Activate</button>
+                                </form>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-slate-500">No tenants found.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            @if($tenants->hasPages())
+            <div class="px-4 py-4 border-t border-surface-700">
+                {{ $tenants->links() }}
+            </div>
+            @endif
+        </div>
+
     </div>
 </x-app-layout>

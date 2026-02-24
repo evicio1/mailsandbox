@@ -34,7 +34,27 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function () {
 
     // ── Dashboard / Core ──────────────────────────────────────────────────
-    Route::get('/dashboard', [MailboxController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', function () {
+        $user   = auth()->user();
+        $tenant = $user->tenant;
+
+        $mailboxQuery = $tenant ? $tenant->mailboxes() : \App\Models\Mailbox::query();
+        $messageQuery = $tenant
+            ? \App\Models\Message::whereIn('mailbox_id', $tenant->mailboxes()->pluck('id'))
+            : \App\Models\Message::query();
+
+        $stats = [
+            'mailboxes' => (clone $mailboxQuery)->count(),
+            'messages'  => (clone $messageQuery)->count(),
+            'unread'    => (clone $messageQuery)->where('is_read', false)->count(),
+        ];
+
+        $recentMailboxes = (clone $mailboxQuery)->orderByDesc('updated_at')->limit(8)->get();
+
+        return view('dashboard', compact('stats', 'recentMailboxes'));
+    })->name('dashboard');
+
+    Route::get('/mailboxes',             [\App\Http\Controllers\MailboxController::class, 'index'])->name('mailboxes.index');
     Route::get('/mailboxes/{mailbox}',   [MailboxController::class, 'show'])->name('mailboxes.show');
     Route::get('/messages/{message}',    [MessageController::class, 'show'])->name('messages.show');
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'download'])->name('attachments.download');

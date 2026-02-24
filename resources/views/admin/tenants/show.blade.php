@@ -1,70 +1,104 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ $tenant->name }}
-                <span class="text-sm font-normal text-gray-400 ml-2">{{ $tenant->slug }}</span>
-            </h2>
-            <div class="flex gap-2">
-                <a href="{{ route('admin.tenants.edit', $tenant) }}"
-                   class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-sm rounded-md shadow-sm hover:bg-gray-50">Edit</a>
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+                <a href="{{ route('admin.tenants.index') }}" class="text-slate-500 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="page-title">{{ $tenant->name }}</h1>
+                    <p class="page-subtitle">{{ $tenant->slug }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('admin.tenants.edit', $tenant) }}" class="btn-secondary text-xs">Edit</a>
                 <form method="POST" action="{{ route('admin.tenants.resend-invite', $tenant) }}">
                     @csrf
-                    <button class="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm rounded-md shadow-sm hover:bg-indigo-100">Resend Invite</button>
+                    <button class="btn-secondary text-xs text-brand-400 border-brand-600/40 hover:bg-brand-600/10">Resend Invite</button>
                 </form>
                 @if($tenant->isActive())
                     <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}">
                         @csrf
-                        <button class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md shadow-sm hover:bg-red-700">Suspend</button>
+                        <button class="btn-danger text-xs">Suspend</button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('admin.tenants.activate', $tenant) }}">
                         @csrf
-                        <button class="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md shadow-sm hover:bg-green-700">Activate</button>
+                        <button class="btn text-xs text-white bg-emerald-700 hover:bg-emerald-600 focus:ring-emerald-500">Activate</button>
                     </form>
                 @endif
             </div>
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="max-w-4xl space-y-5 animate-fade-in">
 
-            @if(session('success'))
-                <div class="p-3 bg-green-50 border border-green-200 text-green-800 rounded text-sm">{{ session('success') }}</div>
-            @endif
+        @if(session('success'))
+        <div class="flex items-center gap-3 p-4 bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 rounded-xl text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            {{ session('success') }}
+        </div>
+        @endif
 
-            {{-- Metrics --}}
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                @foreach([
-                    ['label'=>'Members',    'value'=> $metrics['users']],
-                    ['label'=>'Mailboxes',  'value'=> $metrics['mailboxes']],
-                    ['label'=>'Messages',   'value'=> $metrics['messages']],
-                    ['label'=>'Storage',    'value'=> $metrics['storage_mb'] . ' MB'],
-                ] as $metric)
-                <div class="bg-white rounded-lg shadow-sm p-5 text-center">
-                    <div class="text-2xl font-bold text-indigo-600">{{ $metric['value'] }}</div>
-                    <div class="text-xs text-gray-500 mt-1">{{ $metric['label'] }}</div>
-                </div>
-                @endforeach
+        <!-- Metrics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            @foreach([
+                ['label' => 'Members',   'value' => $metrics['users'],      'color' => 'brand'],
+                ['label' => 'Mailboxes', 'value' => $metrics['mailboxes'],  'color' => 'violet'],
+                ['label' => 'Messages',  'value' => $metrics['messages'],   'color' => 'emerald'],
+                ['label' => 'Storage',   'value' => $metrics['storage_mb'] . ' MB', 'color' => 'amber'],
+            ] as $metric)
+            <div class="stat-card text-center justify-center flex-col gap-1">
+                <div class="text-2xl font-bold text-white">{{ $metric['value'] }}</div>
+                <div class="stat-card-label">{{ $metric['label'] }}</div>
             </div>
+            @endforeach
+        </div>
 
-            {{-- Details --}}
-            <div class="bg-white shadow-sm sm:rounded-lg p-6 grid grid-cols-2 gap-4 text-sm">
-                <div><span class="text-gray-500">Plan:</span> <span class="font-medium capitalize">{{ $tenant->plan }}</span></div>
-                <div><span class="text-gray-500">Status:</span>
-                    <span class="font-medium {{ $tenant->isActive() ? 'text-green-600' : 'text-red-600' }}">{{ ucfirst($tenant->status) }}</span>
+        <!-- Details -->
+        <div class="card p-6">
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">Tenant Details</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Plan</span>
+                    <span class="badge-gray capitalize">{{ $tenant->plan }}</span>
                 </div>
-                <div><span class="text-gray-500">Owner:</span> <span class="font-medium">{{ $tenant->owner?->name ?? '—' }}</span></div>
-                <div><span class="text-gray-500">Owner Email:</span> <span class="font-medium">{{ $tenant->owner?->email ?? '—' }}</span></div>
-                <div><span class="text-gray-500">Created:</span> <span class="font-medium">{{ $tenant->created_at->toFormattedDateString() }}</span></div>
-            </div>
-
-            {{-- Members link --}}
-            <div class="text-right">
-                <a href="{{ route('admin.members.index', $tenant) }}"
-                   class="text-sm text-indigo-600 hover:underline">Manage Members →</a>
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Status</span>
+                    @if($tenant->isActive())
+                        <span class="badge-green">Active</span>
+                    @else
+                        <span class="badge-red">{{ ucfirst($tenant->status) }}</span>
+                    @endif
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Owner</span>
+                    <span class="text-slate-300 font-medium">{{ $tenant->owner?->name ?? '—' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Owner Email</span>
+                    <span class="text-slate-300 font-medium">{{ $tenant->owner?->email ?? '—' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500">Created</span>
+                    <span class="text-slate-300">{{ $tenant->created_at->toFormattedDateString() }}</span>
+                </div>
             </div>
         </div>
+
+        <div class="flex justify-end">
+            <a href="{{ route('admin.members.index', $tenant) }}"
+               class="btn-primary text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Manage Members
+            </a>
+        </div>
+
     </div>
 </x-app-layout>
