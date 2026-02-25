@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\RequireMfa;
 use App\Http\Middleware\EnsureTenantActive;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\EnsureTenantAdmin;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,9 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'mfa'                => RequireMfa::class,
             'tenant.active'      => EnsureTenantActive::class,
             'super_admin'        => EnsureSuperAdmin::class,
+            'tenant.admin'       => EnsureTenantAdmin::class,
             'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'stripe/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

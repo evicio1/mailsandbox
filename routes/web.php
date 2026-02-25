@@ -10,6 +10,7 @@ use App\Http\Controllers\MailboxController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -70,6 +71,13 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     Route::get('/sessions',  [SessionController::class, 'index'])->name('sessions.index');
     Route::delete('/sessions/{session}', [SessionController::class, 'destroy'])->name('sessions.destroy');
 
+    // ── Billing ────────────────────────────────────────────────────────────
+    Route::middleware('tenant.admin')->group(function () {
+        Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+        Route::post('/billing/checkout/{plan}', [BillingController::class, 'checkout'])->name('billing.checkout');
+        Route::post('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
+    });
+
     // ── Admin: Tenant Management (SuperAdmin only) ─────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('tenants', TenantController::class);
@@ -87,3 +95,6 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
 });
 
 require __DIR__.'/auth.php';
+
+// ── Stripe Webhooks ────────────────────────────────────────────────────────
+Route::stripeWebhooks('stripe/webhook');
