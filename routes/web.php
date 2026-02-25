@@ -11,6 +11,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\InboundWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     Route::post('/mailboxes/{mailbox}/toggle-status', [\App\Http\Controllers\MailboxController::class, 'toggleStatus'])->name('mailboxes.toggle-status');
     Route::get('/mailboxes/{mailbox}',   [MailboxController::class, 'show'])->name('mailboxes.show');
     Route::get('/messages/{message}',    [MessageController::class, 'show'])->name('messages.show');
+    Route::get('/messages/{message}/raw', [MessageController::class, 'raw'])->name('messages.raw');
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'download'])->name('attachments.download');
 
     // ── Profile + Sessions ─────────────────────────────────────────────────
@@ -82,6 +84,9 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
 
         Route::resource('domains', \App\Http\Controllers\DomainController::class)->except(['show']);
         Route::post('domains/{domain}/verify', [\App\Http\Controllers\DomainController::class, 'verify'])->name('domains.verify');
+
+        Route::resource('external-mailboxes', \App\Http\Controllers\ExternalMailboxController::class)->except(['show']);
+        Route::post('external-mailboxes/test', [\App\Http\Controllers\ExternalMailboxController::class, 'testConnection'])->name('external-mailboxes.test');
     });
 
     // ── Admin: Tenant Management (SuperAdmin only) ─────────────────────────
@@ -104,3 +109,6 @@ require __DIR__.'/auth.php';
 
 // ── Stripe Webhooks ────────────────────────────────────────────────────────
 Route::post('stripe/webhook', [\Laravel\Cashier\Http\Controllers\WebhookController::class, 'handleWebhook'])->name('cashier.webhook');
+
+// ── Inbound Email Webhook ──────────────────────────────────────────────────
+Route::post('api/webhooks/inbound-email', [InboundWebhookController::class, 'handle'])->name('webhooks.inbound-email');

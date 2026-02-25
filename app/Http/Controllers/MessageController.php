@@ -19,5 +19,15 @@ class MessageController extends Controller
 
         return view('messages.show', compact('message', 'extractedOtp'));
     }
+    public function raw(Message $message)
+    {
+        if (!$message->raw_file_path || !\Illuminate\Support\Facades\Storage::disk('local')->exists($message->raw_file_path)) {
+            abort(404, 'Raw source not available.');
+        }
+
+        return response()->file(\Illuminate\Support\Facades\Storage::disk('local')->path($message->raw_file_path), [
+            'Content-Type' => 'text/plain',
+        ]);
+    }
 }
 

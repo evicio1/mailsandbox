@@ -24,34 +24,79 @@ class ImapImportCommand extends Command
         $this->info("Starting IMAP import...");
         Log::info("Starting IMAP import...");
 
-        $mailboxHost = env('IMAP_HOST');
-        $username = env('IMAP_USER');
-        $password = env('IMAP_PASS');
+        $totalNew = 0;
+        $totalSkipped = 0;
+        $totalErrors = 0;
 
-        if (!$mailboxHost || !$username || !$password) {
-            $this->error("IMAP credentials are not fully configured in .env");
-            return Command::FAILURE;
+        // 1. Process Global Platform IMAP (from .env)
+        $globalHost = env('IMAP_HOST');
+        $globalUser = env('IMAP_USER');
+        $globalPass = env('IMAP_PASS');
+
+        if ($globalHost && $globalUser && $globalPass) {
+            $this->info("Processing Global IMAP Account: $globalUser");
+            $this->processMailbox($globalHost, 993, 'ssl', $globalUser, $globalPass, null, $sanitizer, $mailboxService, $totalNew, $totalSkipped, $totalErrors);
+        } else {
+            $this->warn("Global IMAP credentials not fully configured in .env. Skipping global account.");
         }
 
-        $inbox = @imap_open($mailboxHost, $username, $password);
+        // 2. Process Tenant External Mailboxes
+        $externalMailboxes = \App\Models\ExternalMailbox::where('status', 'active')->get();
+        
+        foreach ($externalMailboxes as $extMb) {
+            $this->info("Processing External Mailbox: {$extMb->email} (Tenant: {$extMb->tenant_id})");
+            try {
+                $this->processMailbox(
+                    $extMb->host, 
+                    $extMb->port, 
+                    $extMb->encryption, 
+                    $extMb->username, 
+                    $extMb->password, 
+                    $extMb->tenant_id, 
+                    $sanitizer, 
+                    $mailboxService, 
+                    $totalNew, 
+                    $totalSkipped, 
+                    $totalErrors
+                );
+
+                $extMb->update([
+                    'last_sync_at' => now(),
+                    'last_error' => null
+                ]);
+            } catch (Exception $e) {
+                $extMb->update([
+                    'status' => 'failing',
+                    'last_error' => $e->getMessage()
+                ]);
+                $this->error("Failed to process external mailbox {$extMb->email}: " . $e->getMessage());
+                Log::error("Failed to process external mailbox {$extMb->id}: " . $e->getMessage());
+            }
+        }
+
+        $summary = "Finished Global & External Sync. Imported: $totalNew, Skipped: $totalSkipped, Errors: $totalErrors";
+        $this->info($summary);
+        Log::info($summary);
+
+        return Command::SUCCESS;
+    }
+
+    private function processMailbox($host, $port, $encryption, $username, $password, $forceTenantId, HtmlSanitizerService $sanitizer, MailboxService $mailboxService, &$newCount, &$skippedCount, &$errorCount)
+    {
+        $encString = $encryption === 'none' ? '' : '/' . $encryption;
+        $connectionString = '{' . $host . ':' . $port . '/imap' . $encString . '/novalidate-cert}INBOX';
+
+        $inbox = @imap_open($connectionString, $username, $password);
 
         if (!$inbox) {
-            $errorMsg = "Failed to connect to IMAP: " . imap_last_error();
-            $this->error($errorMsg);
-            Log::error($errorMsg);
-            return Command::FAILURE;
+            throw new Exception("IMAP Login Failed: " . imap_last_error());
         }
 
         $emails = imap_search($inbox, 'UNSEEN');
         if (!$emails) {
-            $this->info("No new emails found.");
             imap_close($inbox);
-            return Command::SUCCESS;
+            return;
         }
-
-        $newCount = 0;
-        $skippedCount = 0;
-        $errorCount = 0;
 
         foreach ($emails as $email_number) {
             try {
@@ -76,40 +121,45 @@ class ImapImportCommand extends Command
                     continue;
                 }
 
-                // Domain Routing Logic
-                $domainPart = substr(strrchr($mbKey, "@"), 1) ?: '';
-                $domainModel = \App\Models\Domain::where('domain', $domainPart)
-                    ->where('is_verified', true)
-                    ->first();
-
-                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey, $domainModel, $inbox, $email_number) {
-                    $tenantId = $domainModel ? $domainModel->tenant_id : null;
+                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey, $forceTenantId, $inbox, $email_number) {
                     
                     // Look for existing mailbox
                     $mailbox = Mailbox::where('mailbox_key', $mbKey)->first();
 
                     if (!$mailbox) {
-                        if ($domainModel) {
-                            // Belongs to a known domain
-                            if ($domainModel->catch_all_enabled) {
-                                // Create the mailbox dynamically under the tenant
-                                $mailbox = Mailbox::create([
-                                    'tenant_id' => $tenantId,
-                                    'mailbox_key' => $mbKey,
-                                    'status' => 'active'
-                                ]);
-                            } else {
-                                // Domain exists but catch-all is disabled and no specific mailbox exists.
-                                // We should reject/ignore this email.
-                                throw new \Exception("Mailbox doesn't exist and catch-all is disabled for domain: $domainPart");
-                            }
-                        } else {
-                            // Legacy behavior: If domain not registered, just create a global mailbox without tenant,
-                            // or maybe we should reject it. For MVP, we will still ingest it to avoid breaking the old catch-all evicio.site.
+                        if ($forceTenantId) {
+                            // If this email came from an specifically configured external mailbox for a tenant, 
+                            // we force-route this entirely under that tenant's catch-all. 
+                            // It acts as a dynamic target inbox.
                             $mailbox = Mailbox::create([
+                                'tenant_id' => $forceTenantId,
                                 'mailbox_key' => $mbKey,
                                 'status' => 'active'
                             ]);
+                        } else {
+                            // Legacy/Global Domain Routing Logic (Applies only to global .env account)
+                            $domainPart = substr(strrchr($mbKey, "@"), 1) ?: '';
+                            $domainModel = \App\Models\Domain::where('domain', $domainPart)
+                                ->where('is_verified', true)
+                                ->first();
+
+                            if ($domainModel) {
+                                if ($domainModel->catch_all_enabled) {
+                                    $mailbox = Mailbox::create([
+                                        'tenant_id' => $domainModel->tenant_id,
+                                        'mailbox_key' => $mbKey,
+                                        'status' => 'active'
+                                    ]);
+                                } else {
+                                    throw new \Exception("Mailbox doesn't exist and catch-all is disabled for domain: $domainPart");
+                                }
+                            } else {
+                                // Unregistered domain, fallback catch-all
+                                $mailbox = Mailbox::create([
+                                    'mailbox_key' => $mbKey,
+                                    'status' => 'active'
+                                ]);
+                            }
                         }
                     }
 
@@ -165,18 +215,11 @@ class ImapImportCommand extends Command
             } catch (Exception $e) {
                 $errorCount++;
                 $errorMsg = "Error processing msg $email_number: " . $e->getMessage();
-                $this->error($errorMsg);
                 Log::error($errorMsg);
             }
         }
 
         imap_close($inbox);
-
-        $summary = "Finished. Imported: $newCount, Skipped: $skippedCount, Errors: $errorCount";
-        $this->info($summary);
-        Log::info($summary);
-
-        return Command::SUCCESS;
     }
 }
 

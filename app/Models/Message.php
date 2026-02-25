@@ -11,6 +11,8 @@ class Message extends Model
     protected $casts = [
         'to_raw' => 'array',
         'cc_raw' => 'array',
+        'bcc_raw' => 'array',
+        'tls_info' => 'array',
         'received_at' => 'datetime',
         'is_read' => 'boolean',
     ];

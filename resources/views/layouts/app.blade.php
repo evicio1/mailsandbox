@@ -97,6 +97,14 @@
                         </svg>
                         Domains
                     </a>
+
+                    <a href="{{ route('external-mailboxes.index') }}"
+                       class="sidebar-link {{ request()->routeIs('external-mailboxes.*') ? 'active' : '' }}">
+                        <svg class="sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        External Mailboxes
+                    </a>
                     
                     <a href="{{ route('billing.index') }}"
                        class="sidebar-link {{ request()->routeIs('billing.*') ? 'active' : '' }}">

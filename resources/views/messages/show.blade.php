@@ -94,30 +94,50 @@
         </div>
         @endif
 
-        <!-- Body -->
-        <div x-data="{ tab: '{{ !empty($message->html_body_sanitized) ? 'html' : 'text' }}' }">
+        @php 
+            $htmlBody = $message->html_body_sanitized;
+            if (!empty($htmlBody) && count($attachments) > 0) {
+                foreach ($attachments as $att) {
+                    if ($att->content_id) {
+                        $htmlBody = str_replace('cid:' . $att->content_id, route('attachments.download', $att->id), $htmlBody);
+                    }
+                }
+            }
+            $activeTab = !empty($message->html_body_sanitized) ? 'html' : 'text';
+        @endphp
+        <div x-data="{ tab: '{{ $activeTab }}' }">
             <!-- Tab Bar -->
-            <div class="flex items-center gap-1 mb-0">
-                @if(!empty($message->html_body_sanitized))
-                <button @click="tab = 'html'"
-                        :class="tab === 'html' ? 'bg-surface-700 text-white border-surface-600' : 'text-slate-500 hover:text-slate-300 border-transparent'"
-                        class="px-4 py-2 text-sm font-medium rounded-t-lg border transition">
-                    HTML View
-                </button>
+            <div class="flex items-center gap-1 mb-0 justify-between">
+                <div class="flex items-center gap-1">
+                    @if(!empty($message->html_body_sanitized))
+                    <button @click="tab = 'html'"
+                            :class="tab === 'html' ? 'bg-surface-700 text-white border-surface-600' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+                            class="px-4 py-2 text-sm font-medium rounded-t-lg border transition">
+                        HTML View
+                    </button>
+                    @endif
+                    <button @click="tab = 'text'"
+                            :class="tab === 'text' ? 'bg-surface-700 text-white border-surface-600' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+                            class="px-4 py-2 text-sm font-medium rounded-t-lg border transition">
+                        Plain Text
+                    </button>
+                </div>
+                
+                @if(!empty($message->raw_file_path))
+                <a href="{{ route('messages.raw', $message->id) }}" target="_blank"
+                   class="px-4 py-2 text-sm font-medium rounded-t-lg border border-transparent text-brand-400 hover:text-brand-300 transition flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    Original (.eml)
+                </a>
                 @endif
-                <button @click="tab = 'text'"
-                        :class="tab === 'text' ? 'bg-surface-700 text-white border-surface-600' : 'text-slate-500 hover:text-slate-300 border-transparent'"
-                        class="px-4 py-2 text-sm font-medium rounded-t-lg border transition">
-                    Plain Text
-                </button>
             </div>
 
-            <div class="card rounded-tl-none overflow-hidden min-h-[300px]">
+            <div class="card overflow-hidden min-h-[300px]" :class="{ 'rounded-tl-none': tab === 'html' || tab === 'text' }">
                 @if(!empty($message->html_body_sanitized))
                 <div x-show="tab === 'html'" class="p-6">
                     <!-- Render the email HTML in an isolated iframe-like container -->
                     <div class="prose prose-invert max-w-none prose-a:text-brand-400">
-                        {!! $message->html_body_sanitized !!}
+                        {!! $htmlBody !!}
                     </div>
                 </div>
                 @endif
