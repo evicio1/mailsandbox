@@ -64,8 +64,12 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     Route::post('/mailboxes/auto-disable', [\App\Http\Controllers\MailboxController::class, 'autoDisable'])->name('mailboxes.auto-disable');
     Route::post('/mailboxes/{mailbox}/toggle-status', [\App\Http\Controllers\MailboxController::class, 'toggleStatus'])->name('mailboxes.toggle-status');
     Route::get('/mailboxes/{mailbox}',   [MailboxController::class, 'show'])->name('mailboxes.show');
+    Route::get('/messages',              [MessageController::class, 'index'])->name('messages.index');
     Route::get('/messages/{message}',    [MessageController::class, 'show'])->name('messages.show');
     Route::get('/messages/{message}/raw', [MessageController::class, 'raw'])->name('messages.raw');
+    Route::post('/messages/{message}/tags', [\App\Http\Controllers\TagController::class, 'toggle'])->name('messages.tags.toggle');
+    Route::post('/messages/{message}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('messages.notes.store');
+    Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'download'])->name('attachments.download');
 
     // ── Profile + Sessions ─────────────────────────────────────────────────

@@ -4,15 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Database\Factories\AttachmentFactory;
+use Database\Factories\NoteFactory;
 
-class Attachment extends Model
+class Note extends Model
 {
     use HasFactory;
 
     protected static function newFactory()
     {
-        return AttachmentFactory::new();
+        return NoteFactory::new();
     }
     
     protected $guarded = [];
@@ -20,5 +20,10 @@ class Attachment extends Model
     public function message()
     {
         return $this->belongsTo(Message::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

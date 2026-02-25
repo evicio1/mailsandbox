@@ -3,13 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Cashier\Billable;
 use Illuminate\Support\Str;
+use Database\Factories\TenantFactory;
 
 class Tenant extends Model
 {
-    use Billable;
+    use HasFactory, Billable;
 
+    protected static function newFactory()
+    {
+        return TenantFactory::new();
+    }
+    
     protected $guarded = [];
 
     protected function casts(): array
@@ -56,6 +63,11 @@ class Tenant extends Model
     public function mailboxes()
     {
         return $this->hasMany(Mailbox::class);
+    }
+
+    public function tags()
+    {
+        return $this->hasMany(Tag::class);
     }
 
     public function domains()
