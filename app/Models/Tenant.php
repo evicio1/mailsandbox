@@ -16,7 +16,20 @@ class Tenant extends Model
     {
         return [
             'status' => 'string',
+            'current_period_start' => 'datetime',
+            'current_period_end' => 'datetime',
+            'cancel_at_period_end' => 'boolean',
         ];
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class, 'current_plan_id', 'plan_id');
+    }
+
+    public function getInboxLimitAttribute(): int
+    {
+        return $this->plan ? $this->plan->inbox_limit : 1;
     }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
@@ -72,6 +85,29 @@ class Tenant extends Model
     public function activate(): void
     {
         $this->update(['status' => 'active']);
+    }
+
+    public function enforceInboxQuota(): void
+    {
+        $limit = $this->inbox_limit;
+        $activeCount = $this->mailboxes()->active()->count();
+
+        if ($activeCount > $limit) {
+            $excess = $activeCount - $limit;
+            
+            // Disable the oldest active mailboxes first
+            $mailboxesToDisable = $this->mailboxes()
+                ->active()
+                ->orderBy('created_at', 'asc')
+                ->limit($excess)
+                ->get();
+
+            foreach ($mailboxesToDisable as $mailbox) {
+                $mailbox->markAsDisabled();
+            }
+
+            \Illuminate\Support\Facades\Log::warning("Tenant {$this->id} exceeded inbox limit of {$limit}. Auto-disabled {$excess} mailboxes.");
+        }
     }
 
     // ─── Metrics ─────────────────────────────────────────────────────────────

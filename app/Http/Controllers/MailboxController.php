@@ -38,4 +38,37 @@ class MailboxController extends Controller
         $messages = $mailbox->messages()->orderBy('received_at', 'desc')->orderBy('id', 'desc')->paginate(50);
         return view('mailboxes.show', compact('mailbox', 'messages'));
     }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'mailbox_key' => 'required|string|max:255',
+        ]);
+
+        $user = auth()->user();
+        $tenant = $user->tenant;
+
+        if (!$tenant) {
+            abort(403, 'User does not belong to a tenant.');
+        }
+
+        if ($tenant->mailboxes()->active()->count() >= $tenant->inbox_limit) {
+            return response()->json([
+                'error' => 'INBOX_QUOTA_EXCEEDED',
+                'message' => 'You have reached your inbox quota limit.'
+            ], 403);
+        }
+
+        $mailbox = $tenant->mailboxes()->firstOrCreate([
+            'mailbox_key' => $validated['mailbox_key']
+        ], [
+            'status' => 'active'
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json($mailbox, 201);
+        }
+
+        return redirect()->route('mailboxes.show', $mailbox)->with('success', 'Mailbox created successfully.');
+    }
 }
