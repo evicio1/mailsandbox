@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Plan;
+use App\Models\SalesInquiry;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SalesInquiryNotification;
 
 class BillingController extends Controller
 {
@@ -29,6 +32,11 @@ class BillingController extends Controller
             return back()->with('error', 'This plan is not available for self-serve subscription.');
         }
 
+        // Prevent double subscriptions
+        if ($tenant->subscribed('default')) {
+            return redirect()->route('billing.index')->with('error', 'You already have an active subscription. Please use the Billing Portal to switch plans.');
+        }
+
         // Cashier checkout
         return $tenant->newSubscription('default', $plan->price_id)
             ->checkout([
@@ -46,5 +54,33 @@ class BillingController extends Controller
         }
 
         return $tenant->redirectToBillingPortal(route('billing.index'));
+    }
+
+    public function contactSales(Request $request)
+    {
+        $tenant = auth()->user()->tenant;
+        $planId = $request->input('plan_id', 'premium');
+
+        // Prevent spamming requests
+        $existing = SalesInquiry::where('tenant_id', $tenant->id)
+            ->where('status', 'new')
+            ->first();
+
+        if ($existing) {
+            return back()->with('success', 'Our sales team already has your request! We will reach out to you shortly.');
+        }
+
+        $inquiry = SalesInquiry::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => auth()->id(),
+            'current_plan' => $tenant->current_plan_id,
+            'requested_plan' => $planId,
+            'status' => 'new',
+        ]);
+
+        // Notify SuperAdmin
+        Mail::to('hello@skilleyez.io')->send(new SalesInquiryNotification($inquiry));
+
+        return back()->with('success', 'Thank you! Our sales team has been notified and will reach out to the owner\'s email address shortly.');
     }
 }

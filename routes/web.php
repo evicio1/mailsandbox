@@ -74,8 +74,9 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     // ── Billing ────────────────────────────────────────────────────────────
     Route::middleware('tenant.admin')->group(function () {
         Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
-        Route::post('/billing/checkout/{plan}', [BillingController::class, 'checkout'])->name('billing.checkout');
+        Route::post('/billing/checkout/{plan:plan_id}', [BillingController::class, 'checkout'])->name('billing.checkout');
         Route::post('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
+        Route::post('/billing/contact-sales', [BillingController::class, 'contactSales'])->name('billing.contact-sales');
     });
 
     // ── Admin: Tenant Management (SuperAdmin only) ─────────────────────────

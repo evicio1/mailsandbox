@@ -119,6 +119,13 @@
                                 <button disabled class="w-full py-2 bg-surface-700 text-slate-400 font-medium rounded-lg text-sm cursor-not-allowed">
                                     Current Plan
                                 </button>
+                            @elseif($plan->price_id && $tenant->subscribed('default'))
+                                <form action="{{ route('billing.portal') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="w-full btn-outline text-sm justify-center">
+                                        Switch in Portal
+                                    </button>
+                                </form>
                             @elseif($plan->price_id)
                                 <form action="{{ route('billing.checkout', $plan->plan_id) }}" method="POST">
                                     @csrf
@@ -126,10 +133,25 @@
                                         Subscribe
                                     </button>
                                 </form>
+                            @elseif($plan->plan_id === 'free' && $tenant->subscribed('default'))
+                                <form action="{{ route('billing.portal') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="w-full btn-outline text-red-500/80 hover:text-red-500 border-red-500/50 hover:bg-red-500/10 text-sm justify-center transition">
+                                        Cancel Subscription
+                                    </button>
+                                </form>
+                            @elseif($plan->plan_id === 'free')
+                                <button disabled class="w-full py-2 bg-surface-700 text-slate-400 font-medium rounded-lg text-sm cursor-not-allowed">
+                                    Included
+                                </button>
                             @else
-                                <a href="mailto:sales@maileyez.com" class="w-full flex justify-center items-center py-2 bg-surface-700 hover:bg-surface-600 text-white font-medium rounded-lg text-sm transition">
-                                    Contact Sales
-                                </a>
+                                <form action="{{ route('billing.contact-sales') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="plan_id" value="{{ $plan->plan_id }}">
+                                    <button type="submit" class="w-full flex justify-center items-center py-2 bg-surface-700 hover:bg-surface-600 text-white font-medium rounded-lg text-sm transition">
+                                        {{ \App\Models\SalesInquiry::where('tenant_id', $tenant->id)->where('status', 'new')->exists() ? 'Request Sent' : 'Contact Sales' }}
+                                    </button>
+                                </form>
                             @endif
                         </div>
                     </div>
