@@ -52,7 +52,7 @@ class MailboxController extends Controller
             abort(403, 'User does not belong to a tenant.');
         }
 
-        if ($tenant->mailboxes()->active()->count() >= $tenant->inbox_limit) {
+        if ($tenant->inbox_limit !== -1 && $tenant->mailboxes()->active()->count() >= $tenant->inbox_limit) {
             return response()->json([
                 'error' => 'INBOX_QUOTA_EXCEEDED',
                 'message' => 'You have reached your inbox quota limit.'
@@ -70,5 +70,60 @@ class MailboxController extends Controller
         }
 
         return redirect()->route('mailboxes.show', $mailbox)->with('success', 'Mailbox created successfully.');
+    }
+
+    public function toggleStatus(Request $request, Mailbox $mailbox)
+    {
+        $tenant = auth()->user()->tenant;
+        if ($tenant && $mailbox->tenant_id !== null && $mailbox->tenant_id !== $tenant->id) {
+            abort(403);
+        }
+
+        if ($mailbox->status === 'active') {
+            $mailbox->markAsDisabled();
+            $message = 'Mailbox disabled successfully.';
+        } else {
+            // Check quota before enabling
+            if ($tenant && $tenant->inbox_limit !== -1 && $tenant->mailboxes()->active()->count() >= $tenant->inbox_limit) {
+                return back()->with('error', 'Cannot enable mailbox: Inbox quota exceeded.');
+            }
+            $mailbox->update(['status' => 'active']);
+            $message = 'Mailbox enabled successfully.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function autoDisable(Request $request)
+    {
+        $tenant = auth()->user()->tenant;
+        if (!$tenant) {
+            abort(403);
+        }
+
+        if ($tenant->inbox_limit === -1) {
+            return back()->with('success', 'Plan is unlimited, no mailboxes to disable.');
+        }
+
+        $activeCount = $tenant->mailboxes()->active()->count();
+        $limit = $tenant->inbox_limit;
+
+        if ($activeCount <= $limit) {
+            return back()->with('success', 'You are already within your plan limit.');
+        }
+
+        $excess = $activeCount - $limit;
+        
+        $mailboxesToDisable = $tenant->mailboxes()
+            ->active()
+            ->orderBy('created_at', 'asc') // disable oldest first
+            ->limit($excess)
+            ->get();
+
+        foreach ($mailboxesToDisable as $mailbox) {
+            $mailbox->markAsDisabled();
+        }
+
+        return back()->with('success', "Automatically disabled $excess oldest inboxes to match your quota.");
     }
 }

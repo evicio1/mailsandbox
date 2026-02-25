@@ -44,6 +44,36 @@
         </div>
         @endif
 
+        @php
+            $hasPaymentIssue = $tenant->subscribed('default') && ($tenant->subscription('default')->pastDue() || $tenant->subscription('default')->hasIncompletePayment());
+            // High attempts: total mailboxes (including deleted) is much higher than the limit
+            $highInboxAttempts = $tenant->inbox_limit !== -1 && $tenant->mailboxes()->withTrashed()->count() > ($tenant->inbox_limit * 2 + 5);
+        @endphp
+
+        @if($hasPaymentIssue || $highInboxAttempts)
+            <div class="space-y-3">
+                @if($hasPaymentIssue)
+                    <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm flex items-start gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <div>
+                            <div class="font-semibold">Payment Issue Detected</div>
+                            <p class="mt-1 text-red-400">This tenant has a past due subscription or incomplete payment. Please monitor or contact the owner.</p>
+                        </div>
+                    </div>
+                @endif
+                
+                @if($highInboxAttempts)
+                    <div class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-500 text-sm flex items-start gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div>
+                            <div class="font-semibold">High Inbox Creation Volume</div>
+                            <p class="mt-1 text-amber-400">This tenant has an unusually high number of total mailboxes compared to their plan limit. Monitor for potential API abuse.</p>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
+
         <!-- Metrics -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             @foreach([
@@ -83,9 +113,40 @@
                     <span class="text-slate-500">Owner Email</span>
                     <span class="text-slate-300 font-medium">{{ $tenant->owner?->email ?? '—' }}</span>
                 </div>
-                <div class="flex justify-between items-center py-2">
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
                     <span class="text-slate-500">Created</span>
                     <span class="text-slate-300">{{ $tenant->created_at->toFormattedDateString() }}</span>
+                </div>
+                <!-- Billing Details -->
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Subscription Status</span>
+                    @if($tenant->subscribed('default'))
+                        @if($tenant->subscription('default')->pastDue())
+                            <span class="badge-red">Past Due</span>
+                        @elseif($tenant->subscription('default')->canceled())
+                            <span class="badge-amber">Canceled</span>
+                        @else
+                            <span class="badge-green">Active</span>
+                        @endif
+                    @else
+                        <span class="badge-gray">None</span>
+                    @endif
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
+                    <span class="text-slate-500">Stripe Customer</span>
+                    @if($tenant->stripe_id)
+                        <a href="https://dashboard.stripe.com/customers/{{ $tenant->stripe_id }}" target="_blank" class="text-brand-400 hover:underline">View in Stripe ↗</a>
+                    @else
+                        <span class="text-slate-500">—</span>
+                    @endif
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-slate-500">Stripe Subscription</span>
+                    @if($tenant->subscribed('default') && $tenant->subscription('default')->stripe_id)
+                        <a href="https://dashboard.stripe.com/subscriptions/{{ $tenant->subscription('default')->stripe_id }}" target="_blank" class="text-brand-400 hover:underline">View in Stripe ↗</a>
+                    @else
+                        <span class="text-slate-500">—</span>
+                    @endif
                 </div>
             </div>
         </div>

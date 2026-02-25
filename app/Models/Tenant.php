@@ -29,6 +29,9 @@ class Tenant extends Model
 
     public function getInboxLimitAttribute(): int
     {
+        if ($this->inbox_limit_override !== null) {
+            return $this->inbox_limit_override;
+        }
         return $this->plan ? $this->plan->inbox_limit : 1;
     }
 

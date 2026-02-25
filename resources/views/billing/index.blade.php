@@ -67,15 +67,51 @@
             @endif
         @endif
 
+        @php
+            $activeCount = $tenant->mailboxes()->active()->count();
+            $limit = $tenant->inbox_limit;
+            $isUnlimited = $limit === -1;
+            $percent = $isUnlimited ? 0 : ($limit > 0 ? min(100, round(($activeCount / $limit) * 100)) : 100);
+            $isOverQuota = !$isUnlimited && $activeCount > $limit;
+            $isNearQuota = !$isUnlimited && !$isOverQuota && $percent >= 80;
+        @endphp
+
+        <!-- Quota Warning Banner -->
+        @if($isOverQuota)
+            <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 font-semibold mb-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        Over Quota by {{ $activeCount - $limit }} Inboxes
+                    </div>
+                    You have more active inboxes than your current plan allows. Please upgrade your plan or disable some inboxes.
+                </div>
+                <form action="{{ route('mailboxes.auto-disable') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn-primary whitespace-nowrap bg-red-600 hover:bg-red-500">
+                        Disable extras automatically
+                    </button>
+                </form>
+            </div>
+        @elseif($isNearQuota)
+            <div class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-500 text-sm mb-8">
+                <div class="flex items-center gap-2 font-semibold mb-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Near Quota Limit
+                </div>
+                You have used {{ $activeCount }} of your {{ $limit }} available inboxes ({{ $percent }}%). Consider upgrading your plan soon.
+            </div>
+        @endif
+
         <!-- Current Plan -->
         <div class="card p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-semibold text-white">Current Plan: <span class="capitalize text-brand-400">{{ $tenant->plan->name ?? 'Free' }}</span></h2>
-                    <p class="text-sm text-slate-400 mt-1">
-                        Inbox limit: {{ $tenant->inbox_limit === -1 ? 'Unlimited' : $tenant->inbox_limit }}
-                        &middot;
-                        Subscription Status: 
+                    <p class="text-sm text-slate-400 mt-1 flex items-center gap-2">
+                        <span>Inbox usage: <strong class="{{ $isOverQuota ? 'text-red-400' : ($isNearQuota ? 'text-amber-400' : 'text-white') }}">{{ $activeCount }}</strong> / {{ $isUnlimited ? 'Unlimited' : $limit }}</span>
+                        <span class="text-slate-600">&bull;</span>
+                        <span>Subscription Status: 
                         @if($tenant->cancel_at_period_end && $tenant->current_period_end)
                             <span class="text-amber-400 font-medium">Cancels {{ $tenant->current_period_end->format('M j') }}</span>
                         @elseif($tenant->subscribed('default'))
@@ -83,6 +119,7 @@
                         @else
                             <span class="text-slate-400">None</span>
                         @endif
+                        </span>
                     </p>
                 </div>
                 

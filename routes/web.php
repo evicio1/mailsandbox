@@ -60,6 +60,8 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
 
     Route::get('/mailboxes',             [\App\Http\Controllers\MailboxController::class, 'index'])->name('mailboxes.index');
     Route::post('/mailboxes',            [\App\Http\Controllers\MailboxController::class, 'store'])->name('mailboxes.store');
+    Route::post('/mailboxes/auto-disable', [\App\Http\Controllers\MailboxController::class, 'autoDisable'])->name('mailboxes.auto-disable');
+    Route::post('/mailboxes/{mailbox}/toggle-status', [\App\Http\Controllers\MailboxController::class, 'toggleStatus'])->name('mailboxes.toggle-status');
     Route::get('/mailboxes/{mailbox}',   [MailboxController::class, 'show'])->name('mailboxes.show');
     Route::get('/messages/{message}',    [MessageController::class, 'show'])->name('messages.show');
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'download'])->name('attachments.download');

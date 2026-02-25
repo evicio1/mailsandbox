@@ -114,16 +114,32 @@ class TenantController extends Controller implements HasMiddleware
     public function update(Request $request, Tenant $tenant)
     {
         $validated = $request->validate([
-            'name'   => ['required', 'string', 'max:255'],
-            'plan'   => ['required', 'exists:plans,plan_id'],
-            'status' => ['required', 'in:active,suspended'],
+            'name'                 => ['required', 'string', 'max:255'],
+            'plan'                 => ['required', 'exists:plans,plan_id'],
+            'status'               => ['required', 'in:active,suspended'],
+            'inbox_limit_override' => ['nullable', 'integer', 'min:-1'],
         ]);
 
+        $oldPlan = $tenant->current_plan_id;
+        $oldLimit = $tenant->inbox_limit_override;
+
         $tenant->update([
-            'name' => $validated['name'],
-            'current_plan_id' => $validated['plan'],
-            'status' => $validated['status'],
+            'name'                 => $validated['name'],
+            'current_plan_id'      => $validated['plan'],
+            'status'               => $validated['status'],
+            'inbox_limit_override' => $validated['inbox_limit_override'],
         ]);
+
+        if ($oldPlan !== $validated['plan'] || $oldLimit !== $validated['inbox_limit_override']) {
+            \Illuminate\Support\Facades\Log::info('SuperAdmin updated tenant billing/limits', [
+                'tenant_id' => $tenant->id,
+                'admin_id'  => auth()->id(),
+                'old_plan'  => $oldPlan,
+                'new_plan'  => $validated['plan'],
+                'old_override' => $oldLimit,
+                'new_override' => $validated['inbox_limit_override'],
+            ]);
+        }
 
         return redirect()->route('admin.tenants.show', $tenant)
             ->with('success', 'Tenant updated successfully.');

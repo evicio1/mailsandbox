@@ -10,6 +10,37 @@
 
     <div class="space-y-6 animate-fade-in">
 
+        @php
+            $tenant = Auth::user()->tenant;
+            $activeCount = $tenant ? $tenant->mailboxes()->active()->count() : 0;
+            $limit = $tenant ? $tenant->inbox_limit : -1;
+            $isOverQuota = $limit !== -1 && $activeCount > $limit;
+        @endphp
+
+        <!-- Quota Warning Banner -->
+        @if($isOverQuota)
+            <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 font-semibold mb-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        You are over quota by {{ $activeCount - $limit }} inboxes
+                    </div>
+                    New emails for disabled inboxes will not be imported. Please resolve this to avoid interruption.
+                </div>
+                <div class="flex gap-2">
+                    <form action="{{ route('mailboxes.auto-disable') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn-primary whitespace-nowrap bg-red-600 hover:bg-red-500">
+                            Disable extras automatically
+                        </button>
+                    </form>
+                    <a href="{{ route('mailboxes.index') }}" class="btn-secondary whitespace-nowrap">
+                        Review inboxes
+                    </a>
+                </div>
+            </div>
+        @endif
+
         <!-- Stats Row -->
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <!-- Mailboxes -->

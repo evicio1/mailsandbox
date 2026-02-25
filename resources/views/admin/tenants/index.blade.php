@@ -64,6 +64,13 @@
                         </td>
                         <td>
                             <span class="badge-gray capitalize">{{ $tenant->plan->name ?? 'Free' }}</span>
+                            @if($tenant->subscribed('default'))
+                                @if($tenant->subscription('default')->pastDue())
+                                    <span class="badge-red ml-1 text-[10px]">Past Due</span>
+                                @elseif($tenant->subscription('default')->canceled())
+                                    <span class="badge-amber ml-1 text-[10px]">Canceled</span>
+                                @endif
+                            @endif
                         </td>
                         <td>
                             @if($tenant->status === 'active')

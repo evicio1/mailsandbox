@@ -36,6 +36,12 @@
                 </div>
 
                 <div>
+                    <x-input-label for="inbox_limit_override" value="Custom Inbox Limit Override" />
+                    <x-text-input id="inbox_limit_override" name="inbox_limit_override" type="number" min="-1" step="1" :value="old('inbox_limit_override', $tenant->inbox_limit_override)" placeholder="Leave blank for plan default. -1 for unlimited." />
+                    <x-input-error :messages="$errors->get('inbox_limit_override')" class="mt-2" />
+                </div>
+
+                <div>
                     <x-input-label for="status" value="Status" />
                     <select id="status" name="status" class="form-input">
                         <option value="active"    @selected(old('status', $tenant->status) === 'active')>Active</option>

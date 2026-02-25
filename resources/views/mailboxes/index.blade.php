@@ -44,20 +44,30 @@
                     <a href="{{ route('mailboxes.show', $mb->id) }}"
                        class="flex items-center justify-between px-5 py-4 hover:bg-surface-750/50 transition group">
                         <div class="flex items-center gap-4 min-w-0">
-                            <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                                 style="background: rgba(99,102,241,0.12)">
-                                <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center {{ $mb->status === 'disabled' ? 'bg-slate-500/10' : 'bg-brand-500/12' }}">
+                                <svg class="w-5 h-5 {{ $mb->status === 'disabled' ? 'text-slate-500' : 'text-brand-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                                 </svg>
                             </div>
                             <div class="min-w-0">
-                                <div class="font-semibold text-white text-sm">{{ $mb->mailbox_key }}</div>
+                                <div class="font-semibold {{ $mb->status === 'disabled' ? 'text-slate-400' : 'text-white' }} text-sm flex items-center gap-2">
+                                    {{ $mb->mailbox_key }}
+                                    @if($mb->status === 'disabled')
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">Disabled</span>
+                                    @endif
+                                </div>
                                 <div class="text-xs text-slate-500 mt-0.5">
                                     Created {{ $mb->created_at->format('M j, Y') }}
                                 </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 flex-shrink-0">
+                            <form action="{{ route('mailboxes.toggle-status', $mb->id) }}" method="POST" class="mr-2 js-prevent-row-click" onsubmit="event.stopPropagation();">
+                                @csrf
+                                <button type="submit" class="text-xs px-3 py-1.5 rounded {{ $mb->status === 'active' ? 'bg-surface-700 text-red-400 hover:bg-red-500/10' : 'bg-brand-500/20 text-brand-400 hover:bg-brand-500/30' }} transition">
+                                    {{ $mb->status === 'active' ? 'Disable' : 'Enable' }}
+                                </button>
+                            </form>
                             <span class="badge-blue hidden sm:inline-flex">View Inbox</span>
                             <svg class="w-4 h-4 text-slate-600 group-hover:text-brand-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
