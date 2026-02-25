@@ -76,9 +76,42 @@ class ImapImportCommand extends Command
                     continue;
                 }
 
-                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey) {
-                    // Ensure mailbox exists
-                    $mailbox = Mailbox::firstOrCreate(['mailbox_key' => $mbKey]);
+                // Domain Routing Logic
+                $domainPart = substr(strrchr($mbKey, "@"), 1) ?: '';
+                $domainModel = \App\Models\Domain::where('domain', $domainPart)
+                    ->where('is_verified', true)
+                    ->first();
+
+                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey, $domainModel, $inbox, $email_number) {
+                    $tenantId = $domainModel ? $domainModel->tenant_id : null;
+                    
+                    // Look for existing mailbox
+                    $mailbox = Mailbox::where('mailbox_key', $mbKey)->first();
+
+                    if (!$mailbox) {
+                        if ($domainModel) {
+                            // Belongs to a known domain
+                            if ($domainModel->catch_all_enabled) {
+                                // Create the mailbox dynamically under the tenant
+                                $mailbox = Mailbox::create([
+                                    'tenant_id' => $tenantId,
+                                    'mailbox_key' => $mbKey,
+                                    'status' => 'active'
+                                ]);
+                            } else {
+                                // Domain exists but catch-all is disabled and no specific mailbox exists.
+                                // We should reject/ignore this email.
+                                throw new \Exception("Mailbox doesn't exist and catch-all is disabled for domain: $domainPart");
+                            }
+                        } else {
+                            // Legacy behavior: If domain not registered, just create a global mailbox without tenant,
+                            // or maybe we should reject it. For MVP, we will still ingest it to avoid breaking the old catch-all evicio.site.
+                            $mailbox = Mailbox::create([
+                                'mailbox_key' => $mbKey,
+                                'status' => 'active'
+                            ]);
+                        }
+                    }
 
                     $htmlSanitized = $sanitizer->sanitize($parser->htmlBody);
                     $snippet = mb_substr(trim($parser->textBody), 0, 150);

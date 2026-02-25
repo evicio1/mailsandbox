@@ -61,6 +61,14 @@ class TenantController extends Controller implements HasMiddleware
             'slug'            => Str::slug($validated['name']) . '-' . Str::lower(Str::random(6)),
         ]);
 
+        // Auto-provision a platform subdomain
+        $tenant->domains()->create([
+            'domain' => $tenant->slug . '.' . config('imap.domain', 'evicio.site'),
+            'is_verified' => true,
+            'is_platform_provided' => true,
+            'catch_all_enabled' => true,
+        ]);
+
         // Auto-create the Stripe Customer in the background
         try {
             $tenant->createAsStripeCustomer([

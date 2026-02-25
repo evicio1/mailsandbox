@@ -73,12 +73,15 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
     Route::get('/sessions',  [SessionController::class, 'index'])->name('sessions.index');
     Route::delete('/sessions/{session}', [SessionController::class, 'destroy'])->name('sessions.destroy');
 
-    // ── Billing ────────────────────────────────────────────────────────────
+    // ── Billing & Domains (Tenant Admins) ──────────────────────────────────
     Route::middleware('tenant.admin')->group(function () {
         Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
         Route::post('/billing/checkout/{plan:plan_id}', [BillingController::class, 'checkout'])->name('billing.checkout');
         Route::post('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
         Route::post('/billing/contact-sales', [BillingController::class, 'contactSales'])->name('billing.contact-sales');
+
+        Route::resource('domains', \App\Http\Controllers\DomainController::class)->except(['show']);
+        Route::post('domains/{domain}/verify', [\App\Http\Controllers\DomainController::class, 'verify'])->name('domains.verify');
     });
 
     // ── Admin: Tenant Management (SuperAdmin only) ─────────────────────────

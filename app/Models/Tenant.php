@@ -58,6 +58,11 @@ class Tenant extends Model
         return $this->hasMany(Mailbox::class);
     }
 
+    public function domains()
+    {
+        return $this->hasMany(Domain::class);
+    }
+
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');

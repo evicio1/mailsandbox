@@ -175,27 +175,39 @@ class MailParserService
 
     public function getTargetMailbox()
     {
-        $domain = config('imap.domain', 'evicio.site');
+        // First try to find an address that matches a verified domain in our database
+        // We cache the domains to avoid hitting the DB multiple times per email, but since this runs
+        // in a command loop, maybe it's fine.
+        $verifiedDomains = \App\Models\Domain::where('is_verified', true)->pluck('domain')->toArray();
+        $fallbackDomain = config('imap.domain', 'evicio.site');
+        $validDomains = array_merge($verifiedDomains, [$fallbackDomain]);
 
         $order = ['delivered-to', 'x-original-to', 'envelope-to'];
+        
+        $findValidEmail = function($emails) use ($validDomains) {
+            foreach ($emails as $email) {
+                $emailStr = strtolower(trim($email, " <>"));
+                $domainPart = substr(strrchr($emailStr, "@"), 1);
+                if (in_array($domainPart, $validDomains)) {
+                    return $emailStr;
+                }
+            }
+            return null;
+        };
+
         foreach ($order as $hdr) {
             if (!empty($this->extendedHeaders[$hdr])) {
-                foreach ($this->extendedHeaders[$hdr] as $email) {
-                    $email = strtolower(trim($email, " <>"));
-                    if (str_ends_with($email, '@' . $domain)) {
-                        return $email;
-                    }
+                if ($matched = $findValidEmail($this->extendedHeaders[$hdr])) {
+                    return $matched;
                 }
             }
         }
 
-        foreach ($this->toRaw as $email) {
-            $email = strtolower(trim($email, " <>"));
-            if (str_ends_with($email, '@' . $domain)) {
-                return $email;
-            }
+        if ($matched = $findValidEmail($this->toRaw)) {
+            return $matched;
         }
-        // Fallback
-        return strtolower(trim($this->toRaw[0] ?? 'unknown@' . $domain, " <>"));
+
+        // Fallback: just return the first To address
+        return strtolower(trim($this->toRaw[0] ?? 'unknown@' . $fallbackDomain, " <>"));
     }
 }
