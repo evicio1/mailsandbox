@@ -11,6 +11,9 @@ class BillingController extends Controller
     {
         $tenant = auth()->user()->tenant;
         
+        // Always refresh from DB in case we just returned from a Stripe webhook update
+        $tenant->refresh();
+        
         // Only load active plans that have a price ID, or free/premium for display
         $plans = Plan::where('status', 'active')->orderBy('inbox_limit', 'asc')->get();
         

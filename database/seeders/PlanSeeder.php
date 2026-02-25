@@ -30,7 +30,7 @@ class PlanSeeder extends Seeder
             [
                 'plan_id'     => 'growing',
                 'name'        => 'Growing',
-                'price_id'    => env('STRIPE_PRICE_GROWING', 'price_1T4dETGhINsgQXzblprtBCAk'),
+                'price_id'    => env('STRIPE_PRICE_GROWING', 'price_1T4hUcGhINsgQXzbHHpKRLlM'),
                 'inbox_limit' => 15,
                 'status'      => 'active',
             ],
