@@ -25,7 +25,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/two-factor/recovery-codes', [TwoFactorController::class, 'showRecoveryCodes'])->name('two-factor.recovery-codes');
     Route::post('/two-factor/recovery-codes', [RecoveryCodeController::class, 'store'])->name('two-factor.recovery-codes.regenerate');
 
-    // MFA Challenge (also used for pending login — user not yet fully authed)
+});
+
+// MFA Challenge (also used for pending login — user not yet fully authed)
+Route::middleware('guest')->group(function () {
     Route::get('/two-factor-challenge',  [MfaChallengeController::class, 'show'])->name('two-factor.challenge');
     Route::post('/two-factor-challenge', [MfaChallengeController::class, 'verify'])->name('two-factor.challenge.verify');
 });
