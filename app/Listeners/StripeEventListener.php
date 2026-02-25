@@ -36,10 +36,10 @@ class StripeEventListener
                 $tenant->update([
                     'subscription_status' => $status,
                     'current_plan_id' => $plan ? $plan->plan_id : $tenant->current_plan_id,
-                    'stripe_subscription_id' => $subscription['id'],
-                    'current_period_start' => \Carbon\Carbon::createFromTimestamp($subscription['current_period_start']),
-                    'current_period_end' => \Carbon\Carbon::createFromTimestamp($subscription['current_period_end']),
-                    'cancel_at_period_end' => $subscription['cancel_at_period_end'],
+                    'stripe_subscription_id' => $subscription['id'] ?? null,
+                    'current_period_start' => isset($subscription['current_period_start']) ? \Carbon\Carbon::createFromTimestamp($subscription['current_period_start']) : $tenant->current_period_start,
+                    'current_period_end' => isset($subscription['current_period_end']) ? \Carbon\Carbon::createFromTimestamp($subscription['current_period_end']) : $tenant->current_period_end,
+                    'cancel_at_period_end' => $subscription['cancel_at_period_end'] ?? false,
                 ]);
                 Log::info("Tenant {$tenant->id} subscription updated to {$status}");
             }
