@@ -65,7 +65,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
                     <span class="text-slate-500">Plan</span>
-                    <span class="badge-gray capitalize">{{ $tenant->plan }}</span>
+                    <span class="badge-gray capitalize">{{ $tenant->plan->name ?? 'Free' }}</span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-surface-700/50">
                     <span class="text-slate-500">Status</span>

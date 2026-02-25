@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Plan;
 use App\Notifications\TenantWelcomeNotification;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -23,7 +24,7 @@ class TenantController extends Controller implements HasMiddleware
 
     public function index(Request $request)
     {
-        $query = Tenant::with('owner')->withCount('users');
+        $query = Tenant::with(['owner', 'plan'])->withCount('users');
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -40,24 +41,35 @@ class TenantController extends Controller implements HasMiddleware
 
     public function create()
     {
-        return view('admin.tenants.create');
+        $plans = Plan::all();
+        return view('admin.tenants.create', compact('plans'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name'            => ['required', 'string', 'max:255'],
-            'plan'            => ['required', 'in:free,starter,pro,enterprise'],
+            'plan'            => ['required', 'exists:plans,plan_id'],
             'owner_email'     => ['required', 'email', 'max:255'],
             'owner_name'      => ['required', 'string', 'max:255'],
         ]);
 
         $tenant = Tenant::create([
-            'name'   => $validated['name'],
-            'plan'   => $validated['plan'],
-            'status' => 'active',
-            'slug'   => Str::slug($validated['name']) . '-' . Str::lower(Str::random(6)),
+            'name'            => $validated['name'],
+            'current_plan_id' => $validated['plan'],
+            'status'          => 'active',
+            'slug'            => Str::slug($validated['name']) . '-' . Str::lower(Str::random(6)),
         ]);
+
+        // Auto-create the Stripe Customer in the background
+        try {
+            $tenant->createAsStripeCustomer([
+                'email' => $validated['owner_email'],
+                'name' => $validated['name'],
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Stripe Customer Creation failed: ' . $e->getMessage());
+        }
 
         // Create or find the owner user and assign them
         $owner = User::firstOrCreate(
@@ -81,7 +93,7 @@ class TenantController extends Controller implements HasMiddleware
 
     public function show(Tenant $tenant)
     {
-        $tenant->load(['owner', 'users', 'mailboxes']);
+        $tenant->load(['owner', 'users', 'mailboxes', 'plan']);
 
         $metrics = [
             'users'        => $tenant->users()->count(),
@@ -95,18 +107,23 @@ class TenantController extends Controller implements HasMiddleware
 
     public function edit(Tenant $tenant)
     {
-        return view('admin.tenants.edit', compact('tenant'));
+        $plans = Plan::all();
+        return view('admin.tenants.edit', compact('tenant', 'plans'));
     }
 
     public function update(Request $request, Tenant $tenant)
     {
         $validated = $request->validate([
             'name'   => ['required', 'string', 'max:255'],
-            'plan'   => ['required', 'in:free,starter,pro,enterprise'],
+            'plan'   => ['required', 'exists:plans,plan_id'],
             'status' => ['required', 'in:active,suspended'],
         ]);
 
-        $tenant->update($validated);
+        $tenant->update([
+            'name' => $validated['name'],
+            'current_plan_id' => $validated['plan'],
+            'status' => $validated['status'],
+        ]);
 
         return redirect()->route('admin.tenants.show', $tenant)
             ->with('success', 'Tenant updated successfully.');

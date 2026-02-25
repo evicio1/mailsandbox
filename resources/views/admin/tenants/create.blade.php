@@ -27,8 +27,8 @@
                 <div>
                     <x-input-label for="plan" value="Plan" />
                     <select id="plan" name="plan" class="form-input">
-                        @foreach(['free','starter','pro','enterprise'] as $plan)
-                            <option value="{{ $plan }}" @selected(old('plan') === $plan)>{{ ucfirst($plan) }}</option>
+                        @foreach($plans as $planModel)
+                            <option value="{{ $planModel->plan_id }}" @selected(old('plan') === $planModel->plan_id)>{{ $planModel->name }}</option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('plan')" class="mt-2" />

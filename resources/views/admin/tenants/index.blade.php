@@ -63,7 +63,7 @@
                             <div class="text-xs text-slate-600 mt-0.5">{{ $tenant->slug }}</div>
                         </td>
                         <td>
-                            <span class="badge-gray capitalize">{{ $tenant->plan }}</span>
+                            <span class="badge-gray capitalize">{{ $tenant->plan->name ?? 'Free' }}</span>
                         </td>
                         <td>
                             @if($tenant->status === 'active')

@@ -97,4 +97,4 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
 require __DIR__.'/auth.php';
 
 // ── Stripe Webhooks ────────────────────────────────────────────────────────
-Route::stripeWebhooks('stripe/webhook');
+Route::post('stripe/webhook', [\Laravel\Cashier\Http\Controllers\WebhookController::class, 'handleWebhook'])->name('cashier.webhook');
