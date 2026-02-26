@@ -16,6 +16,15 @@
             @csrf
             @method('PUT')
             
+            <div class="mb-6 pb-6 border-b border-surface-700">
+                <label for="domain" class="block text-sm font-medium text-slate-300 mb-1">Target Domain <span class="text-slate-500 text-xs">(Optional)</span></label>
+                <input type="text" name="domain" id="domain" x-model="formData.domain"
+                       value="{{ old('domain', $externalMailbox->domain) }}"
+                       placeholder="yourdomain.com"
+                       class="form-input w-full max-w-sm">
+                <p class="text-xs text-slate-500 mt-1">Incoming emails will route to Virtual Inboxes matching this domain.</p>
+            </div>
+
             <div class="grid grid-cols-6 gap-4 pt-2">
                 <div class="col-span-6 sm:col-span-4">
                     <label for="host" class="block text-sm font-medium text-slate-300 mb-1">IMAP Host</label>
@@ -57,6 +66,13 @@
                 </div>
             </div>
 
+            <div>
+                <label for="folder" class="block text-sm font-medium text-slate-300 mb-1">IMAP Folder</label>
+                <input type="text" name="folder" id="folder" x-model="formData.folder"
+                       value="{{ old('folder', $externalMailbox->folder) }}" required
+                       class="form-input w-full max-w-xs">
+            </div>
+
             <!-- Test Connection Result -->
             <div x-show="testResult !== null" 
                  :class="{ 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400': testSuccess, 'bg-red-900/30 border-red-700/50 text-red-400': !testSuccess }"
@@ -82,9 +98,11 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('imapConnectionTest', () => ({
                 formData: {
+                    domain: '{{ old('domain', $externalMailbox->domain) }}',
                     host: '{{ old('host', $externalMailbox->host) }}',
                     port: '{{ old('port', $externalMailbox->port) }}',
                     encryption: '{{ old('encryption', $externalMailbox->encryption) }}',
+                    folder: '{{ old('folder', $externalMailbox->folder) }}',
                     username: '{{ old('username', $externalMailbox->username) }}',
                     password: '' // Note: we can't test existing encrypted password seamlessly client-side without sending it down
                 },

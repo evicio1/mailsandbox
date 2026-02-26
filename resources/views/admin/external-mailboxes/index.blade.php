@@ -1,31 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between w-full">
-            <div>
-                <h1 class="page-title">External Mailboxes</h1>
-                <p class="page-subtitle">Sync emails from your external Catch-All accounts via IMAP</p>
-            </div>
-            <a href="{{ route('external-mailboxes.create') }}" class="btn-primary">
-                Add Mailbox
-            </a>
-        </div>
+        <h1 class="page-title">All External Mailboxes</h1>
+        <p class="page-subtitle">Super Admin view of all synced mailboxes</p>
     </x-slot>
 
-    <div class="space-y-5 animate-fade-in">
+    <div class="space-y-4 animate-fade-in">
         @if(session('success'))
-        <div class="flex items-center gap-3 p-4 bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 rounded-xl text-sm">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-            {{ session('success') }}
-        </div>
+            <div class="p-4 bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 rounded-xl text-sm">
+                {{ session('success') }}
+            </div>
         @endif
 
         <div class="card overflow-hidden">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Email Address</th>
+                        <th>Account</th>
+                        <th>Tenant</th>
                         <th>Connection</th>
                         <th>Status</th>
                         <th>Last Sync</th>
@@ -36,13 +27,16 @@
                     @forelse($mailboxes as $mailbox)
                     <tr>
                         <td class="font-medium text-white">{{ $mailbox->email }}</td>
+                        <td class="text-slate-300">
+                            {{ $mailbox->tenant->name ?? 'Unknown' }}
+                        </td>
                         <td class="text-slate-400">
                             {{ $mailbox->host }}:{{ $mailbox->port }} <span class="capitalize text-xs opacity-75">({{ $mailbox->encryption }})</span>
                         </td>
                         <td>
                             <div class="flex flex-col gap-1 items-start">
                                 @if($mailbox->status === 'active')
-                                    <span class="badge-green">Active Connection</span>
+                                    <span class="badge-green">Active</span>
                                 @else
                                     <span class="badge-red" title="{{ $mailbox->last_error }}">Failing</span>
                                 @endif
@@ -59,35 +53,30 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-3">
-                                <a href="{{ route('external-mailboxes.logs', $mailbox) }}" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition border-r border-surface-600 pr-3">Logs</a>
+                                <a href="{{ route('admin.external-mailboxes.logs', $mailbox) }}" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition border-r border-surface-600 pr-3">Logs</a>
                                 
-                                <form method="POST" action="{{ route('external-mailboxes.toggle-sync', $mailbox) }}">
+                                <form method="POST" action="{{ route('admin.external-mailboxes.toggle-sync', $mailbox) }}">
                                     @csrf
-                                    <button class="text-xs {{ $mailbox->is_sync_enabled ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300' }} font-medium transition border-r border-surface-600 pr-3">
+                                    <button class="text-xs {{ $mailbox->is_sync_enabled ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300' }} font-medium transition">
                                         {{ $mailbox->is_sync_enabled ? 'Pause Sync' : 'Resume Sync' }}
                                     </button>
-                                </form>
-
-                                <a href="{{ route('external-mailboxes.edit', $mailbox) }}" class="text-xs text-brand-400 hover:text-brand-300 font-medium transition border-r border-surface-600 pr-3">Edit</a>
-                                
-                                <form method="POST" action="{{ route('external-mailboxes.destroy', $mailbox) }}" onsubmit="return confirm('Stop syncing emails from this mailbox?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="text-xs text-red-400 hover:text-red-300 font-medium transition">Remove</button>
                                 </form>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="text-center py-12 text-slate-500">
-                            No external mailboxes added yet.<br>
-                            <a href="{{ route('external-mailboxes.create') }}" class="text-brand-400 hover:underline mt-2 inline-block">Connect your first mailbox</a>
+                        <td colspan="6" class="text-center py-12 text-slate-500">
+                            No external mailboxes configured across all tenants.
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <div class="px-2">
+            {{ $mailboxes->links() }}
         </div>
     </div>
 </x-app-layout>

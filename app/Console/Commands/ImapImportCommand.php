@@ -6,12 +6,16 @@ use Illuminate\Console\Command;
 use App\Models\Mailbox;
 use App\Models\Message;
 use App\Models\Attachment;
+use App\Models\ExternalMailbox;
+use App\Models\Tenant;
+use App\Notifications\ExternalMailboxFailingNotification;
 use App\Services\HtmlSanitizerService;
 use App\Services\MailboxService;
 use App\Services\MailParserService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Notification;
 use Exception;
 
 class ImapImportCommand extends Command
@@ -35,40 +39,103 @@ class ImapImportCommand extends Command
 
         if ($globalHost && $globalUser && $globalPass) {
             $this->info("Processing Global IMAP Account: $globalUser");
-            $this->processMailbox($globalHost, 993, 'ssl', $globalUser, $globalPass, null, $sanitizer, $mailboxService, $totalNew, $totalSkipped, $totalErrors);
+            $this->processMailbox($globalHost, 993, 'ssl', 'INBOX', $globalUser, $globalPass, null, $sanitizer, $mailboxService, $totalNew, $totalSkipped, $totalErrors);
         } else {
             $this->warn("Global IMAP credentials not fully configured in .env. Skipping global account.");
         }
 
-        // 2. Process Tenant External Mailboxes
-        $externalMailboxes = \App\Models\ExternalMailbox::where('status', 'active')->get();
+        // 2. Process Tenant External Mailboxes (with locking and batching)
+        $externalMailboxes = ExternalMailbox::where('status', 'active')
+            ->where('is_sync_enabled', true)
+            ->where(function ($q) {
+                $q->whereNull('sync_lock_until')
+                  ->orWhere('sync_lock_until', '<=', now());
+            })
+            ->orderBy('last_sync_at')
+            ->take(3)
+            ->get();
         
         foreach ($externalMailboxes as $extMb) {
             $this->info("Processing External Mailbox: {$extMb->email} (Tenant: {$extMb->tenant_id})");
+            
+            // Set lock proactively
+            $extMb->update(['sync_lock_until' => now()->addMinutes(10)]);
+
+            $syncLog = $extMb->syncLogs()->create([
+                'status' => 'processing',
+                'started_at' => now(),
+            ]);
+
+            $mbNew = 0;
+            $mbSkipped = 0;
+            $mbErrors = 0;
+
             try {
                 $this->processMailbox(
                     $extMb->host, 
                     $extMb->port, 
                     $extMb->encryption, 
+                    $extMb->folder ?? 'INBOX',
                     $extMb->username, 
                     $extMb->password, 
-                    $extMb->tenant_id, 
+                    $extMb, 
                     $sanitizer, 
                     $mailboxService, 
-                    $totalNew, 
-                    $totalSkipped, 
-                    $totalErrors
+                    $mbNew, 
+                    $mbSkipped, 
+                    $mbErrors
                 );
+
+                $totalNew += $mbNew;
+                $totalSkipped += $mbSkipped;
+                $totalErrors += $mbErrors;
+
+                $syncLog->update([
+                    'status' => 'success',
+                    'emails_found' => ($mbNew + $mbSkipped + $mbErrors),
+                    'emails_imported' => $mbNew,
+                    'finished_at' => now(),
+                ]);
 
                 $extMb->update([
                     'last_sync_at' => now(),
-                    'last_error' => null
+                    'last_error' => null,
+                    'error_count' => 0,
+                    'sync_lock_until' => null // release lock
                 ]);
             } catch (Exception $e) {
-                $extMb->update([
-                    'status' => 'failing',
-                    'last_error' => $e->getMessage()
+                $totalNew += $mbNew;
+                $totalSkipped += $mbSkipped;
+                $totalErrors += $mbErrors;
+
+                $syncLog->update([
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'emails_found' => ($mbNew + $mbSkipped + $mbErrors),
+                    'emails_imported' => $mbNew,
+                    'finished_at' => now(),
                 ]);
+
+                $newErrorCount = $extMb->error_count + 1;
+                $backoffMinutes = pow(5, min($newErrorCount, 4)); // 5, 25, 125, 625 mins
+                
+                $updateData = [
+                    'last_error' => $e->getMessage(),
+                    'error_count' => $newErrorCount,
+                    'sync_lock_until' => now()->addMinutes($backoffMinutes)
+                ];
+
+                if ($newErrorCount >= 5 && $extMb->status === 'active') {
+                    $updateData['status'] = 'failing';
+                    
+                    $tenant = Tenant::find($extMb->tenant_id);
+                    if ($tenant && $tenant->owner) {
+                        $tenant->owner->notify(new ExternalMailboxFailingNotification($extMb));
+                    }
+                }
+
+                $extMb->update($updateData);
+
                 $this->error("Failed to process external mailbox {$extMb->email}: " . $e->getMessage());
                 Log::error("Failed to process external mailbox {$extMb->id}: " . $e->getMessage());
             }
@@ -81,10 +148,10 @@ class ImapImportCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function processMailbox($host, $port, $encryption, $username, $password, $forceTenantId, HtmlSanitizerService $sanitizer, MailboxService $mailboxService, &$newCount, &$skippedCount, &$errorCount)
+    private function processMailbox($host, $port, $encryption, $folder, $username, $password, ?ExternalMailbox $extMb, HtmlSanitizerService $sanitizer, MailboxService $mailboxService, &$newCount, &$skippedCount, &$errorCount)
     {
         $encString = $encryption === 'none' ? '' : '/' . $encryption;
-        $connectionString = '{' . $host . ':' . $port . '/imap' . $encString . '/novalidate-cert}INBOX';
+        $connectionString = '{' . $host . ':' . $port . '/imap' . $encString . '/novalidate-cert}' . $folder;
 
         $inbox = @imap_open($connectionString, $username, $password);
 
@@ -92,20 +159,36 @@ class ImapImportCommand extends Command
             throw new Exception("IMAP Login Failed: " . imap_last_error());
         }
 
-        $emails = imap_search($inbox, 'UNSEEN');
+        if ($extMb) {
+            // Incremental sync via UID SEARCH
+            $searchCriteria = 'UID ' . ($extMb->last_seen_uid + 1) . ':*';
+            $emails = imap_search($inbox, $searchCriteria, SE_UID);
+        } else {
+            // Global fallback
+            $emails = imap_search($inbox, 'UNSEEN');
+        }
+
         if (!$emails) {
             imap_close($inbox);
             return;
         }
 
-        foreach ($emails as $email_number) {
+        // Limit to 50 emails per run to prevent timeout
+        $emails = array_slice($emails, 0, 50);
+
+        foreach ($emails as $email_identifier) {
+            // If using UID search, we must get the message number for the parser
+            $email_number = $extMb ? imap_msgno($inbox, $email_identifier) : $email_identifier;
+            $uid = $extMb ? $email_identifier : imap_uid($inbox, $email_number);
             try {
                 $parser = new MailParserService($inbox, $email_number);
                 $parser->parse();
 
                 $mbKey = MailboxService::normalizeMailboxKey($parser->getTargetMailbox());
                 
-                $dedupeKey = MailboxService::generateDedupeKey(
+                // Determine dedupe key. ExtMb ID is used to prevent cross-source clashes if domain logic isn't enough.
+                $extMbPrefix = $extMb ? $extMb->id . '-' : 'G-';
+                $dedupeKey = $extMbPrefix . MailboxService::generateDedupeKey(
                     $mbKey,
                     $parser->messageId,
                     $parser->fromEmail,
@@ -117,25 +200,37 @@ class ImapImportCommand extends Command
                 // Check if exists
                 if (Message::where('dedupe_key', $dedupeKey)->exists()) {
                     $skippedCount++;
-                    imap_setflag_full($inbox, $email_number, "\\Seen");
+                    if ($extMb) {
+                        $extMb->update(['last_seen_uid' => max($extMb->last_seen_uid, $uid)]);
+                    } else {
+                        @imap_setflag_full($inbox, $email_number, "\\Seen");
+                    }
                     continue;
                 }
 
-                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey, $forceTenantId, $inbox, $email_number) {
+                DB::transaction(function () use ($parser, $sanitizer, $mbKey, $dedupeKey, $extMb, $inbox, $email_number) {
                     
                     // Look for existing mailbox
                     $mailbox = Mailbox::where('mailbox_key', $mbKey)->first();
 
                     if (!$mailbox) {
-                        if ($forceTenantId) {
-                            // If this email came from an specifically configured external mailbox for a tenant, 
-                            // we force-route this entirely under that tenant's catch-all. 
-                            // It acts as a dynamic target inbox.
-                            $mailbox = Mailbox::create([
-                                'tenant_id' => $forceTenantId,
-                                'mailbox_key' => $mbKey,
-                                'status' => 'active'
-                            ]);
+                        if ($extMb) {
+                            $tenant = Tenant::find($extMb->tenant_id);
+                            
+                            if ($tenant && $tenant->canCreateMoreMailboxes()) {
+                                $mailbox = Mailbox::create([
+                                    'tenant_id' => $extMb->tenant_id,
+                                    'mailbox_key' => $mbKey,
+                                    'status' => 'active'
+                                ]);
+                            } else {
+                                // Quota exceeded. Route to a designated "Unassigned" mailbox or fail safe.
+                                // For now, we will create/use an "unassigned" fallback for this tenant.
+                                $mailbox = Mailbox::firstOrCreate(
+                                    ['tenant_id' => $extMb->tenant_id, 'mailbox_key' => 'unassigned@' . ($extMb->domain ?? 'external.local')],
+                                    ['status' => 'active']
+                                );
+                            }
                         } else {
                             // Legacy/Global Domain Routing Logic (Applies only to global .env account)
                             $domainPart = substr(strrchr($mbKey, "@"), 1) ?: '';
@@ -210,7 +305,12 @@ class ImapImportCommand extends Command
                 });
 
                 $newCount++;
-                imap_setflag_full($inbox, $email_number, "\\Seen");
+                
+                if ($extMb) {
+                    $extMb->update(['last_seen_uid' => max($extMb->last_seen_uid, $uid)]);
+                } else {
+                    @imap_setflag_full($inbox, $email_number, "\\Seen");
+                }
 
             } catch (Exception $e) {
                 $errorCount++;

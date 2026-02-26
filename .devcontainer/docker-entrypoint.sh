@@ -30,7 +30,7 @@ fi
 # 3. Laravel bootstrap (only runs if we're inside the app directory)
 # ---------------------------------------------------------------------------
 APP_DIR="/var/www/app"
-if [ -f "$APP_DIR/composer.json" ]; then
+if [ -f "$APP_DIR/composer.json" ] && [ "$SKIP_SETUP" != "true" ]; then
   cd "$APP_DIR"
 
   echo "==> Installing Composer dependencies..."
@@ -57,9 +57,17 @@ if [ -f "$APP_DIR/composer.json" ]; then
   echo "==> Setting storage permissions..."
   mkdir -p storage/attachments
   chmod -R 777 storage bootstrap/cache
+elif [ -f "$APP_DIR/composer.json" ]; then
+  cd "$APP_DIR"
+  echo "==> Skipping setup (SKIP_SETUP is true). Waiting for web container to build assets..."
+  sleep 10
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Start Apache
+# 4. Start Process (Apache or custom command)
 # ---------------------------------------------------------------------------
-exec apache2-foreground
+if [ $# -gt 0 ]; then
+  exec "$@"
+else
+  exec apache2-foreground
+fi

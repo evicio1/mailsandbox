@@ -47,5 +47,43 @@ services:
       mysql:
         condition: service_healthy   # wait until MySQL is truly ready
 
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/var/www/app:cached
+    environment:
+      APACHE_DOCUMENT_ROOT: /var/www/app/public
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: mailsandbox
+      DB_USERNAME: mailsandboxer
+      DB_PASSWORD: "FMR7zrq5ucr!jau-pgb"
+      SKIP_SETUP: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["php", "artisan", "queue:work"]
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/var/www/app:cached
+    environment:
+      APACHE_DOCUMENT_ROOT: /var/www/app/public
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: mailsandbox
+      DB_USERNAME: mailsandboxer
+      DB_PASSWORD: "FMR7zrq5ucr!jau-pgb"
+      SKIP_SETUP: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["php", "artisan", "schedule:work"]
+
 volumes:
   mysql_data:

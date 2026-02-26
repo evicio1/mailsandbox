@@ -90,6 +90,8 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
         Route::post('domains/{domain}/verify', [\App\Http\Controllers\DomainController::class, 'verify'])->name('domains.verify');
 
         Route::resource('external-mailboxes', \App\Http\Controllers\ExternalMailboxController::class)->except(['show']);
+        Route::post('external-mailboxes/{externalMailbox}/toggle-sync', [\App\Http\Controllers\ExternalMailboxController::class, 'toggleSync'])->name('external-mailboxes.toggle-sync');
+        Route::get('external-mailboxes/{externalMailbox}/logs', [\App\Http\Controllers\ExternalMailboxController::class, 'logs'])->name('external-mailboxes.logs');
         Route::post('external-mailboxes/test', [\App\Http\Controllers\ExternalMailboxController::class, 'testConnection'])->name('external-mailboxes.test');
     });
 
@@ -99,6 +101,10 @@ Route::middleware(['auth', 'verified', 'tenant.active', 'mfa'])->group(function 
         Route::post('tenants/{tenant}/suspend',       [TenantController::class, 'suspend'])->name('tenants.suspend');
         Route::post('tenants/{tenant}/activate',      [TenantController::class, 'activate'])->name('tenants.activate');
         Route::post('tenants/{tenant}/resend-invite', [TenantController::class, 'resendInvite'])->name('tenants.resend-invite');
+        
+        Route::get('external-mailboxes', [\App\Http\Controllers\Admin\ExternalMailboxController::class, 'index'])->name('external-mailboxes.index');
+        Route::post('external-mailboxes/{externalMailbox}/toggle-sync', [\App\Http\Controllers\Admin\ExternalMailboxController::class, 'toggleSync'])->name('external-mailboxes.toggle-sync');
+        Route::get('external-mailboxes/{externalMailbox}/logs', [\App\Http\Controllers\Admin\ExternalMailboxController::class, 'logs'])->name('external-mailboxes.logs');
     });
 
     // ── Admin: Member Management (TenantAdmin or SuperAdmin) ─────────────
