@@ -81,9 +81,6 @@ class MailParserService
                 $email = filter_var(trim($matches[2], " <>"), FILTER_SANITIZE_EMAIL);
                 if ($email) {
                     $this->extendedHeaders[$headerName][] = $email;
-                    if (!in_array($email, $this->toRaw)) {
-                        $this->toRaw[] = $email;
-                    }
                 }
             }
         }
