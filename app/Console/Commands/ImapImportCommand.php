@@ -39,7 +39,12 @@ class ImapImportCommand extends Command
 
         if ($globalHost && $globalUser && $globalPass) {
             $this->info("Processing Global IMAP Account: $globalUser");
-            $this->processMailbox($globalHost, 993, 'ssl', 'INBOX', $globalUser, $globalPass, null, $sanitizer, $mailboxService, $totalNew, $totalSkipped, $totalErrors);
+            try {
+                $this->processMailbox($globalHost, env('IMAP_PORT', 993), env('IMAP_ENCRYPTION', 'ssl'), 'INBOX', $globalUser, $globalPass, null, $sanitizer, $mailboxService, $totalNew, $totalSkipped, $totalErrors);
+            } catch (Exception $e) {
+                $this->error("Failed to process Global IMAP account: " . $e->getMessage());
+                Log::error("Failed to process Global IMAP account: " . $e->getMessage());
+            }
         } else {
             $this->warn("Global IMAP credentials not fully configured in .env. Skipping global account.");
         }
@@ -160,9 +165,16 @@ class ImapImportCommand extends Command
         }
 
         if ($extMb) {
-            // Incremental sync via UID SEARCH
-            $searchCriteria = 'UID ' . ($extMb->last_seen_uid + 1) . ':*';
-            $emails = imap_search($inbox, $searchCriteria, SE_UID);
+            // Incremental sync via filtering ALL UIDs in memory
+            $allUids = imap_search($inbox, 'ALL', SE_UID) ?: [];
+            
+            // Filter out UIDs we've already seen
+            $emails = array_filter($allUids, function($uid) use ($extMb) {
+                return $uid > $extMb->last_seen_uid;
+            });
+            
+            // Re-index array
+            $emails = array_values($emails);
         } else {
             // Global fallback
             $emails = imap_search($inbox, 'UNSEEN');
@@ -217,7 +229,7 @@ class ImapImportCommand extends Command
                         if ($extMb) {
                             $tenant = Tenant::find($extMb->tenant_id);
                             
-                            if ($tenant && $tenant->canCreateMoreMailboxes()) {
+                            if ($tenant && $tenant->mailboxes()->active()->count() < $tenant->inbox_limit) {
                                 $mailbox = Mailbox::create([
                                     'tenant_id' => $extMb->tenant_id,
                                     'mailbox_key' => $mbKey,
