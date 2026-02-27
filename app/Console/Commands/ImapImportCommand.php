@@ -168,6 +168,12 @@ class ImapImportCommand extends Command
             // Incremental sync via filtering ALL UIDs in memory
             $allUids = imap_search($inbox, 'ALL', SE_UID) ?: [];
             
+            $this->info("Debug: ExtMB last_seen_uid is " . $extMb->last_seen_uid);
+            $this->info("Debug: allUids length: " . count($allUids));
+            if (count($allUids)) {
+                $this->info("Debug: allUids: " . implode(',', $allUids));
+            }
+
             // Filter out UIDs we've already seen
             $emails = array_filter($allUids, function($uid) use ($extMb) {
                 return $uid > $extMb->last_seen_uid;
@@ -195,6 +201,10 @@ class ImapImportCommand extends Command
             try {
                 $parser = new MailParserService($inbox, $email_number);
                 $parser->parse();
+
+                if ($extMb && $extMb->domain) {
+                    $parser->setCustomDomains([$extMb->domain]);
+                }
 
                 $mbKey = MailboxService::normalizeMailboxKey($parser->getTargetMailbox());
                 

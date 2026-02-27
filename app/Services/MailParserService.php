@@ -170,6 +170,13 @@ class MailParserService
         return $decoded;
     }
 
+    public array $customDomains = [];
+
+    public function setCustomDomains(array $domains)
+    {
+        $this->customDomains = $domains;
+    }
+
     public function getTargetMailbox()
     {
         // First try to find an address that matches a verified domain in our database
@@ -177,7 +184,7 @@ class MailParserService
         // in a command loop, maybe it's fine.
         $verifiedDomains = \App\Models\Domain::where('is_verified', true)->pluck('domain')->toArray();
         $fallbackDomain = config('imap.domain', 'evicio.site');
-        $validDomains = array_merge($verifiedDomains, [$fallbackDomain]);
+        $validDomains = array_merge($verifiedDomains, [$fallbackDomain], $this->customDomains);
 
         $order = ['delivered-to', 'x-original-to', 'envelope-to'];
         
@@ -192,16 +199,16 @@ class MailParserService
             return null;
         };
 
+        if ($matched = $findValidEmail($this->toRaw)) {
+            return $matched;
+        }
+
         foreach ($order as $hdr) {
             if (!empty($this->extendedHeaders[$hdr])) {
                 if ($matched = $findValidEmail($this->extendedHeaders[$hdr])) {
                     return $matched;
                 }
             }
-        }
-
-        if ($matched = $findValidEmail($this->toRaw)) {
-            return $matched;
         }
 
         // Fallback: just return the first To address
